@@ -524,8 +524,10 @@
       </div>
     </div>
 
+    <script src="./shared/hub.js"></script>
     <script>
       "use strict";
+      if (window.Hub) { Hub.menuButton(); }
       // ============================================================
       // BUCK SHOT — classic-style light-gun game on a 480x360 canvas
       // rendered chunky/pixelated, scaled up by CSS.
@@ -1235,6 +1237,7 @@
             }
             else if (roundHits >= requiredHits()) { round++; startRound(); }
             else { state = "gameOver"; stateT = 0; if (score > best) best = score; showGameOverBtns(); }
+            if (window.Hub && (state === "gameOver" || state === "finalEnd")) { Hub.submitScore('buck-shot', score); }
           }
         }
       }
