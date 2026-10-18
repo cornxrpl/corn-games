@@ -899,6 +899,7 @@
       <p class="foot-hint"><b>Keyboard:</b> ← → dodge · ↓ duck · Z / X punch (hold ↑ for face punches) · ENTER Super Punch (SP) · P pause. &nbsp;Psst — try tapping the BOXING logo five times.</p>
     </div>
 
+    <script src="./shared/hub.js"></script>
     <script>
     "use strict";
     /* ================= Debug log (persists on-device) =================
@@ -1566,6 +1567,7 @@
         if(F.idx >= progress && F.idx < OPPONENTS.length - 1) progress = F.idx + 1;
         else if(F.idx === OPPONENTS.length - 1) progress = OPPONENTS.length - 1;
         wins++;
+        if (window.Hub) { Hub.submitScore('boxing', wins); }
         SFX.cheer();
       } else { SFX.boo(); }
       var isChamp = playerWon && F.idx === OPPONENTS.length - 1;
@@ -3578,6 +3580,7 @@
     updateCheatIndicators();
     dbgLog("BOOT", "App boot · navigation type=" + DBG_NAV + (DBG_NAV === "reload" ? " → RELOAD_DETECTED: the page reloaded, so all session state was reset and the title screen is showing" : "") + " · debug log storage=" + (DBG_STORAGE_OK ? "on-device localStorage (survives reloads/crashes)" : "UNAVAILABLE — this visit only") + " · userAgent=" + navigator.userAgent);
     showScreen("title", DBG_NAV === "reload" ? "RELOAD_DETECTED" : "BOOT");
+    if (window.Hub) { Hub.menuButton(); }
     dbgLog("BOOT", "Ready · " + OPPONENTS.length + " fighters on the ladder · player is CORN MAN · sound=" + (soundOn ? "on" : "off"));
     requestAnimationFrame(loop);
     </script>
