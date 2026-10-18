@@ -14,7 +14,9 @@ corn-games/
 ├── soccer-goal.html
 ├── football.html
 ├── buck-shot.html
-└── boxing.html
+├── boxing.html
+├── shared/hub.js         ← session scoring + back bar (no persistence)
+└── vercel.json           ← pure static site config (no functions)
 ```
 
 ## Upload to GitHub (browser, no command line)
