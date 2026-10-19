@@ -72,10 +72,13 @@
       return typeof scores[gameId] === "number" ? scores[gameId] : null;
     },
 
-    /* Render the back bar at the top of a game page. Fixed overlay: it never
-       reflows the game. The bar itself ignores pointer events except for the
+    /* Render the back bar at the top of a game page. The bar is fixed, and
+       the game is pushed down by exactly the bar's height (added to the
+       body's existing padding-top), so the bar never covers game headers
+       or buttons. The bar itself ignores pointer events except for the
        Back button, so it cannot block game input. */
     menuButton: function (label) {
+      var BAR_H = 38;
       function insert() {
         if (!document.body || document.getElementById("hub-back-bar")) return;
         var bar = document.createElement("div");
@@ -91,7 +94,7 @@
             "display:flex",
             "align-items:center",
             "gap:12px",
-            "height:38px",
+            "height:" + BAR_H + "px",
             "padding:0 12px",
             "box-sizing:border-box",
             "background:rgba(5,20,5,0.72)",
@@ -138,6 +141,14 @@
         bar.appendChild(title);
         bar.appendChild(spacer);
         document.body.insertBefore(bar, document.body.firstChild);
+        /* Push the game down by the bar's height so nothing is covered.
+           Preserves the game's own top padding; exposes --hub-bar for
+           games whose root is sized in dvh units (Football). */
+        try {
+          var cur = parseFloat(window.getComputedStyle(document.body).paddingTop) || 0;
+          document.body.style.paddingTop = cur + BAR_H + "px";
+          document.documentElement.style.setProperty("--hub-bar", BAR_H + "px");
+        } catch (e) {}
       }
       if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", insert);
