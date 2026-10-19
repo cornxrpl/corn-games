@@ -1,6 +1,6 @@
 # 🌽 CORN Games — GitHub Repo
 
-One repo holding all five games as plain, self-contained HTML files.
+One repo holding all six games as plain, self-contained HTML files.
 Each game is a single file with every image and sound inlined — no build
 step, no server, no database. All files live at the repo root so they
 upload in one batch from the GitHub web UI.
@@ -15,6 +15,7 @@ corn-games/
 ├── football.html
 ├── buck-shot.html
 ├── boxing.html
+├── parkinsons-challenge.html
 ├── shared/hub.js         ← session scoring + back bar (no persistence)
 └── vercel.json           ← pure static site config (no functions)
 ```
