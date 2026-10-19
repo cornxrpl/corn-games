@@ -840,7 +840,7 @@
         if (!bearSeen && duckIndex + (slot || 0) >= targets - 1) kind = "bear"; // last target is the bear if none charged yet
         if (kind === "bear") bearSeen = true;
         var built = null;
-        var dr = round >= FINAL_ROUND ? 1 : round; // TESTING: Level 50 speed pinned to Level 1 speed
+        var dr = round; // speed driver — Level 50 runs at full final-level speed, the fastest in the game
         var speed = 62 + dr * 7 + rnd(0, 18); // px/s — a little quicker every round
         if (kind === "duck" || kind === "pigeon") {
           var type = kind === "pigeon" ? PIGEON_TYPE : DUCK_TYPES[irnd(0, 2)];
