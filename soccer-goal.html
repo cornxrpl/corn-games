@@ -351,6 +351,34 @@
       background: rgba(8, 23, 15, .76);
     }
     .sound-toggle:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+    .back-main-btn {
+      min-height: 37px;
+      padding: 7px 11px;
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 8px;
+      color: #fff;
+      background: rgba(8, 23, 15, .76);
+      font-weight: 800;
+      cursor: pointer;
+      pointer-events: auto;
+    }
+    .back-main-btn[hidden] { display: none; }
+    .back-main-btn:hover { background: rgba(8, 23, 15, .92); }
+    .back-main-btn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+    .back-home-btn {
+      width: 100%;
+      min-height: 36px;
+      margin-top: 9px;
+      border: 1px solid rgba(255,255,255,.45);
+      border-radius: 8px;
+      color: #fff;
+      background: rgba(255,255,255,.08);
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .back-home-btn:hover { background: rgba(255,255,255,.16); }
+    .back-home-btn:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 
     .callout {
       position: absolute;
@@ -1199,7 +1227,7 @@
     .field-stage { aspect-ratio: 500 / 440; }
     #field { object-fit: contain; }
     .field-hud { inset: 8px 8px auto; }
-    .hud-pill, .sound-toggle {
+    .hud-pill, .sound-toggle, .back-main-btn {
       min-height: 32px;
       padding: 5px 8px;
       font-size: 12px;
@@ -1232,13 +1260,17 @@
       box-shadow: 0 12px 30px rgba(0,0,0,.28);
       backdrop-filter: none;
     }
+    .setup-panel.competitive-setup { display: flex; align-items: stretch; }
     .setup-panel.competitive-setup > div {
+      flex: 1 1 auto;
       width: 100%;
       display: grid;
       grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: auto 1fr auto;
       align-items: stretch;
       gap: 7px;
     }
+    .setup-panel.competitive-setup #competitiveOptions { align-self: end; }
     .setup-panel.competitive-setup .mode-field { margin: 0; }
     .setup-panel.competitive-setup .mode-field legend {
       position: absolute;
@@ -1375,6 +1407,7 @@
       .setup-panel.competitive-setup #competitiveStart { padding-inline: 4px; }
       .setup-panel .field-help { margin-top: 2px; font-size: 8px; line-height: 1.05; }
       .setup-panel.competitive-setup > div { gap: 4px; }
+      .setup-panel .back-home-btn { min-height: 30px; margin-top: 6px; font-size: 10px; }
 
       .result-modal { padding: 7px; }
       .result-card.world-cup-victory {
@@ -1523,6 +1556,7 @@
           <div class="field-hud" aria-live="polite">
             <span class="hud-pill">Kick <strong id="kickNumber">—</strong></span>
             <button class="sound-toggle" id="soundToggle" type="button" aria-pressed="true">Sound On</button>
+            <button class="back-main-btn" id="backToMain" type="button" hidden>Back to Main</button>
             <span class="hud-pill">Goals <strong id="goalCount">0</strong></span>
           </div>
 
@@ -1802,6 +1836,7 @@
                 <button class="primary" id="competitiveStart" type="button">Start AAA Soccer League Round</button>
                 <p class="field-help" id="competitiveHelp">Goals stay banked until you earn promotion.</p>
               </div>
+              <button class="back-home-btn" id="backHome" type="button">Back to Home Screen</button>
             </div>
           </div>
 
@@ -1900,6 +1935,8 @@
         competitiveOptions: document.getElementById('competitiveOptions'),
         startButton: document.getElementById('startButton'),
         competitiveStart: document.getElementById('competitiveStart'),
+        backToMain: document.getElementById('backToMain'),
+        backHome: document.getElementById('backHome'),
         kickNumber: document.getElementById('kickNumber'),
         goalCount: document.getElementById('goalCount'),
         totalKicks: document.getElementById('totalKicks'),
@@ -2058,6 +2095,7 @@
       var game = {
         active: false,
         shooting: false,
+        roundId: 0,
         total: 5,
         shot: 0,
         totalKicks: 0,
@@ -2495,8 +2533,37 @@
         updateShopUI();
       }
 
+      function syncSetupPanelHeight() {
+        // The Practice and Competitive setup panels must stay the same
+        // size. The Practice layout is the taller one, so measure it and
+        // lock the panel to at least that height in both modes.
+        var panel = els.setupPanel;
+        if (panel.hidden) return;
+        panel.style.minHeight = '';
+        var wasCompetitive = panel.classList.contains('competitive-setup');
+        if (wasCompetitive) {
+          panel.classList.remove('competitive-setup');
+          els.practiceOptions.hidden = false;
+          els.competitiveOptions.hidden = true;
+        }
+        var height = panel.offsetHeight;
+        if (wasCompetitive) {
+          panel.classList.add('competitive-setup');
+          els.practiceOptions.hidden = true;
+          els.competitiveOptions.hidden = false;
+        }
+        if (height > 0) panel.style.minHeight = height + 'px';
+      }
+
       function setPlayMode(mode) {
+        var previousMode = game.playMode;
         game.playMode = mode;
+        if (mode === 'competitive' && previousMode === 'practice') {
+          // Switching straight from Practice to Competitive ends the
+          // Practice session, so Total Kicks starts again from 0.
+          game.totalKicks = 0;
+          els.totalKicks.textContent = '0';
+        }
         var competitive = mode === 'competitive';
         els.setupPanel.classList.toggle('competitive-setup', competitive);
         els.practiceOptions.hidden = competitive;
@@ -2507,6 +2574,7 @@
           ? leagues[game.currentLeague].name + ': five kicks per round, ' + leagues[game.currentLeague].target + ' banked goals to advance.'
           : 'Set your practice shootout, then beat the moving keeper.';
         updateScore();
+        syncSetupPanelHeight();
         requestAnimationFrame(fitToViewport);
       }
 
@@ -2741,11 +2809,13 @@
         game.goals = 0;
         game.active = true;
         game.shooting = false;
+        game.roundId += 1;
         buildTracker();
         updateScore();
         updateLeagueLadder();
         els.setupPanel.hidden = true;
         els.resultModal.hidden = true;
+        els.backToMain.hidden = false;
         els.goalZone.hidden = false;
         els.goalZone.disabled = false;
         els.kickNumber.textContent = '1 / ' + game.total;
@@ -2781,7 +2851,11 @@
         // (Keep Playing World Cup League, via the pendingCounterReset flag,
         // or Reset Leagues & Start Over in resetLeagueJourney(), which
         // returns to the Home/setup screen), or on a fresh load back at
-        // the Home (cover) screen, where state starts at zero.
+        // the Home (cover) screen, where state starts at zero. It also
+        // resets whenever a Practice session ends — leaving mid-round via
+        // Back to Main, returning to setup from the Practice results, or
+        // switching from Practice to Competitive — so a Competitive game
+        // started right after Practice begins from 0.
         game.totalKicks += 1;
         els.totalKicks.textContent = String(game.totalKicks);
         if (isGoal) {
@@ -2802,6 +2876,7 @@
       function finishRound() {
         game.active = false;
         game.shooting = false;
+        els.backToMain.hidden = true;
         els.goalZone.disabled = true;
         els.goalZone.hidden = true;
         // Results are based on the kicks actually taken, so a competitive
@@ -2930,6 +3005,7 @@
 
       function shoot(event) {
         if (!game.active || game.shooting) return;
+        var roundToken = game.roundId;
         var point = stagePoint(event);
         var targetX = clamp(point.x, 68, 432);
         var targetY = clamp(point.y, 78, 224);
@@ -2972,6 +3048,7 @@
         var reactionSpan = .68 - strengthLevel * .012;
 
         function fly(now) {
+          if (roundToken !== game.roundId) return;
           var t = clamp((now - start) / duration, 0, 1);
           var eased = 1 - Math.pow(1 - t, 3);
           var reaction = clamp((t - reactionStart) / reactionSpan, 0, 1);
@@ -2990,6 +3067,7 @@
             showCallout(isGoal, nearFrame);
             playAnnouncer(isGoal ? els.goalAnnouncer : els.noGoodAnnouncer);
             setTimeout(function () {
+              if (roundToken !== game.roundId) return;
               // Competitive rounds end the moment the banked league target is
               // reached — the player does not take the remaining kicks. This
               // also holds in post-victory World Cup exhibition play, where
@@ -3030,6 +3108,40 @@
         if (open) els.menuClose.focus();
       }
 
+      function backToMain() {
+        if (!game.active) return;
+        var wasPractice = game.playMode === 'practice';
+        // Bumping roundId cancels any shot still in flight: its animation
+        // frame and its post-landing callback check the token and bail.
+        game.roundId += 1;
+        game.active = false;
+        game.shooting = false;
+        stopAnnouncers();
+        els.goalZone.disabled = true;
+        els.goalZone.hidden = true;
+        els.backToMain.hidden = true;
+        els.resultModal.hidden = true;
+        els.setupPanel.hidden = false;
+        els.kickNumber.textContent = '—';
+        game.shot = 0;
+        game.goals = 0;
+        els.shotTrack.innerHTML = '';
+        if (wasPractice) {
+          // Leaving Practice ends the Practice session: Total Kicks
+          // resets to 0, so a Competitive game started next begins at 0.
+          game.totalKicks = 0;
+          els.totalKicks.textContent = '0';
+        }
+        updateScore();
+        resetBall();
+        els.instruction.textContent = game.playMode === 'competitive'
+          ? leagues[game.currentLeague].name + ': five kicks per round, ' + leagues[game.currentLeague].target + ' banked goals to advance.'
+          : 'Set your practice shootout, then beat the moving keeper.';
+        if (game.playMode === 'competitive') els.competitiveStart.focus();
+        else els.kickInput.focus();
+        requestAnimationFrame(fitToViewport);
+      }
+
       function resetLeagueJourney() {
         clearTimeout(celebrationTimer);
         clearTimeout(cupReadyTimer);
@@ -3050,6 +3162,7 @@
         els.championOverlay.className = 'champion-overlay';
         els.resultModal.hidden = true;
         els.resetLeagues.hidden = true;
+        els.backToMain.hidden = true;
         els.setupPanel.hidden = false;
         els.goalZone.disabled = true;
         els.goalZone.hidden = true;
@@ -3201,6 +3314,16 @@
       });
 
       els.goalZone.addEventListener('click', shoot);
+      els.backToMain.addEventListener('click', backToMain);
+      els.backHome.addEventListener('click', function () {
+        // Return to the cover/title Home Screen. Game state is left as-is;
+        // Continue to Game brings the player back to this setup screen.
+        els.coverScreen.hidden = false;
+        els.gameMain.setAttribute('inert', '');
+        els.coverContinue.disabled = false;
+        els.coverContinue.textContent = 'Continue to Game';
+        els.coverContinue.focus();
+      });
       els.startButton.addEventListener('click', beginRound);
       els.competitiveStart.addEventListener('click', beginRound);
       for (var modeIndex = 0; modeIndex < els.playModeInputs.length; modeIndex += 1) {
@@ -3211,6 +3334,13 @@
       els.kickInput.addEventListener('input', function () { els.kickInput.setCustomValidity(''); });
       els.kickInput.addEventListener('keydown', function (event) { if (event.key === 'Enter') beginRound(); });
       els.playAgain.addEventListener('click', function () {
+        // A finished Practice round ends the Practice session when the
+        // player returns to setup: Total Kicks resets to 0, so choosing
+        // Competitive next starts the count from 0.
+        if (game.playMode === 'practice') {
+          game.totalKicks = 0;
+          els.totalKicks.textContent = '0';
+        }
         // Leaving the World Cup victory screen via "Keep Playing World Cup
         // League": only now do Total Kicks and Goals toward league total
         // reset to zero, so the post-victory rounds start fresh. The flag
@@ -3236,9 +3366,9 @@
       });
       els.resetLeagues.addEventListener('click', resetLeagueJourney);
 
-      window.addEventListener('resize', fitToViewport);
-      window.addEventListener('orientationchange', function () { setTimeout(fitToViewport, 80); });
-      if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitToViewport);
+      window.addEventListener('resize', function () { fitToViewport(); syncSetupPanelHeight(); });
+      window.addEventListener('orientationchange', function () { setTimeout(function () { fitToViewport(); syncSetupPanelHeight(); }, 80); });
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { fitToViewport(); syncSetupPanelHeight(); });
       buildCollectionCards();
       updateLeagueLadder();
       updateShopUI();
