@@ -75,7 +75,9 @@
       .screen.off { display: none; }
 
       /* ---------- Title ---------- */
-      #scr-title { background: linear-gradient(180deg, rgba(5,6,14,.10), rgba(5,6,14,0) 34%, rgba(5,6,14,0) 56%, rgba(5,6,14,.52)), url("assets/title-art-pixel.webp") center / contain no-repeat #060608; justify-content: flex-start; padding-top: 5.5%; }
+      #scr-title { background: #060608; justify-content: flex-start; padding-top: 5.5%; }
+      .title-art { flex: 1 1 auto; min-height: 0; width: 100%; position: relative; background: linear-gradient(180deg, rgba(5,6,14,.10), rgba(5,6,14,0) 34%, rgba(5,6,14,0) 56%, rgba(5,6,14,.52)), url("assets/title-art-pixel.webp") center / contain no-repeat #060608; }
+      #scr-title .title-art .logo { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; }
       .logo { cursor: pointer; line-height: .95; background: none; border: none; padding: 0; font: inherit; display: block; width: min(640px, 90%); min-height: 34%; }
       .logo .l1 {
         font-family: "Bungee", cursive;
@@ -93,12 +95,13 @@
         text-shadow: 0 3px 0 #7a5700, 0 6px 14px rgba(0,0,0,.7);
       }
       .logo .belt { color: #fff; font-size: clamp(11px, 2vw, 15px); letter-spacing: 6px; margin-top: 8px; font-weight: 800; opacity: .92; }
-      .title-btns { display: flex; flex-direction: column; gap: 12px; margin-top: auto; margin-bottom: 4%; width: min(340px, 82%); }
+      .title-btns { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; margin-bottom: 4%; width: min(228px, 58%); }
+      #scr-title .title-btns .btn { padding: 11px 16px; font-size: clamp(14px, 2.4vw, 17px); }
       @media (max-width: 560px) {
         #scr-title { padding-top: 4%; }
         #scr-title .logo { min-height: 27%; }
         #scr-title .title-btns { gap: 8px; margin-bottom: 3%; }
-        #scr-title .title-btns .btn { padding: 9px 14px; font-size: 15px; }
+        #scr-title .title-btns .btn { padding: 9px 12px; font-size: 15px; }
         #scr-title .title-foot { margin-top: 7px; }
       }
       .btn {
@@ -646,7 +649,9 @@
 
         <!-- TITLE -->
         <section class="screen" id="scr-title">
-          <button class="logo" id="logo" type="button" aria-label="Boxing: Heavyweight Champ logo"></button>
+          <div class="title-art">
+            <button class="logo" id="logo" type="button" aria-label="Boxing: Heavyweight Champ logo"></button>
+          </div>
           <div class="pill title-cheats-pill" id="title-cheats"></div>
           <div class="title-btns">
             <button class="btn" id="btn-start">Start Game</button>
