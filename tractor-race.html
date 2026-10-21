@@ -225,6 +225,34 @@
          instead of down at the screen's bottom edge. */
       .enter-game-btn { bottom: calc((100dvh - var(--title-top-inset) - (100vw * 793 / 1179)) / 2 + 16px); }
     }
+    @media (max-width: 480px) {
+      /* iPhone title screen, Buck Shot style: the blurred full-screen
+         backdrop gives way to one centered framed card on the dark
+         screen — dark card, 3px border, rounded corners, shadow — with
+         the whole title art inside it, never cut off, and the Enter Game
+         button resting inside the card at the bottom of the art. The
+         card is centered in the area below the hub-bar / safe-area top
+         inset, so the top clearance above still holds. Widths above
+         480px (iPad, PC) keep the edge-to-edge treatment above. */
+      .main-screen { background: #0b0e0a; }
+      .main-screen-backdrop, .main-screen-shade { display: none; }
+      .main-screen-art {
+        top: calc(var(--title-top-inset) + (100dvh - var(--title-top-inset)) / 2);
+        left: 50%;
+        right: auto;
+        bottom: auto;
+        width: calc(100vw - 32px);
+        height: auto;
+        transform: translate(-50%, -50%);
+        border: 3px solid #3d4a38;
+        border-radius: 18px;
+        background: #141a12;
+        box-shadow: 0 18px 44px rgba(0, 0, 0, .65), 0 4px 14px rgba(0, 0, 0, .5);
+      }
+      .enter-game-btn {
+        bottom: calc((100dvh - var(--title-top-inset) - (100vw - 32px) * 793 / 1179) / 2 + 14px);
+      }
+    }
     body.main-screen-active { overflow: hidden; }
     body.main-screen-active .game-menu,
     body.main-screen-active .build-version { display: none; }
@@ -5102,6 +5130,7 @@
       winners = winners.slice(0,8);
       renderBoard();
       addDebugEntry('Finish · ' + winningTractorName + ' won in ' + formatTime(elapsed));
+      if (window.Hub) { Hub.submitScore('tractor-race', sessionCoins); }
       setRaceMessageWithTractor('', winner, ' wins · ' + laps + (laps===1?' lap · ':' laps · ') + formatTime(elapsed));
       if (winner.player) {
         addDebugEntry('Victory fireworks started');
@@ -5117,7 +5146,6 @@
         finishAnnouncements.push('track-unlocked-' + unlock.key);
       });
       playAnnouncement(finishAnnouncements);
-      if (window.Hub) { Hub.submitScore('tractor-race', sessionCoins); }
     }
 
     function renderBoard() {
