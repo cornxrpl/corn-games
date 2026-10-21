@@ -765,12 +765,13 @@
         /* Matches the pictures' 3:2 shape, so pieces are never stretched.
            The width is capped by the height left over after the screen's
            fixed chrome (header, preview, status, tray, buttons —
-           about 528px), so board + tray + buttons fit on one screen at
+           about 484px now that the tray pieces are smaller and the tray
+           is shorter), so board + tray + buttons fit on one screen at
            any viewport height; and if the estimate is ever tight, the
            board may also flex-shrink (its grid rows share whatever
            height it gets) instead of pushing the buttons off screen. */
         aspect-ratio: 3 / 2;
-        width: min(100%, 520px, max(180px, calc((100dvh - var(--hub-bar, 0px) - 528px) * 1.5)));
+        width: min(100%, 700px, max(180px, calc((100dvh - var(--hub-bar, 0px) - 484px) * 1.5)));
         flex: 0 1 auto;
         min-height: 0;
       }
@@ -819,7 +820,11 @@
         stroke-width: 2.2;
         stroke-linejoin: round;
       }
-      .puz-tray-wrap { width: 100%; max-width: 520px; flex: none; }
+      /* The tray is narrower than the board: the loose pieces are
+         smaller than the board's pieces, which frees up vertical room
+         for the bigger board above. At 400px wide the pieces are about
+         60px across — smaller, but still a comfortable tap target. */
+      .puz-tray-wrap { width: 100%; max-width: 400px; flex: none; }
       .puz-tray-label {
         font-size: 18px;
         font-weight: 800;
@@ -867,6 +872,10 @@
       }
       @media (max-width: 520px) {
         .puz-preview { width: 104px; }
+        /* On phones the tray spans most of the screen width, so cap it
+           harder: pieces end up about 47px across — noticeably smaller
+           than before, still easy to tap. */
+        .puz-tray-wrap { max-width: 320px; }
         .puz-piece { min-height: 44px; }
         .puz-tray-empty { min-height: 44px; }
       }
@@ -986,11 +995,6 @@
             <span><span class="mode-name">Remember Sequence</span>
             <span class="mode-desc">Watch them light up, tap in order.</span></span>
           </button>
-          <button class="mode-btn" id="btn-mixed">
-            <span class="mode-emoji" aria-hidden="true">🔀</span>
-            <span><span class="mode-name">Mixed Play</span>
-            <span class="mode-desc">A surprise mix of all the games.</span></span>
-          </button>
           <button class="mode-btn" id="btn-fingers">
             <span class="mode-emoji" aria-hidden="true">👆</span>
             <span><span class="mode-name">Finger Touches</span>
@@ -1000,6 +1004,11 @@
             <span class="mode-emoji" aria-hidden="true">🖼️</span>
             <span><span class="mode-name">Picture Puzzle</span>
             <span class="mode-desc">Tap 12 pieces into place.</span></span>
+          </button>
+          <button class="mode-btn" id="btn-mixed">
+            <span class="mode-emoji" aria-hidden="true">🔀</span>
+            <span><span class="mode-name">Mixed Play</span>
+            <span class="mode-desc">A surprise mix of all the games.</span></span>
           </button>
         </nav>
         <p class="home-note">Big buttons, gentle sounds, and no wrong answers.</p>
