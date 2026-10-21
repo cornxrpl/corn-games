@@ -1260,7 +1260,13 @@
       box-shadow: 0 12px 30px rgba(0,0,0,.28);
       backdrop-filter: none;
     }
-    .setup-panel.competitive-setup { display: flex; align-items: stretch; }
+    .setup-panel.competitive-setup:not([hidden]) { display: flex; align-items: stretch; }
+    /* The setup widget must actually leave the screen while a round is
+       being played: beginRound() sets the hidden attribute, and the flex
+       rule above is scoped with :not([hidden]) so it can never override
+       the hidden state — the panel stays off screen in both Practice and
+       Competitive until the round is complete. */
+    .setup-panel[hidden] { display: none; }
     .setup-panel.competitive-setup > div {
       flex: 1 1 auto;
       width: 100%;
