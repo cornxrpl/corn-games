@@ -1402,13 +1402,15 @@
         font-size: 10px;
       }
       .setup-panel .input-row { gap: 4px; }
-      .setup-panel .kick-input,
       .setup-panel .primary,
       .setup-panel.competitive-setup #competitiveStart {
         min-height: 30px;
         font-size: 10px;
       }
-      .setup-panel .kick-input { width: 40px; padding: 2px 4px; }
+      /* The kicks field keeps a 16px font at every size: below 16px, iOS
+         Safari auto-zooms the whole page when the field is tapped, and the
+         game stays enlarged after the number is entered. */
+      .setup-panel .kick-input { width: 46px; min-height: 30px; padding: 2px 4px; font-size: 16px; }
       .setup-panel .primary,
       .setup-panel.competitive-setup #competitiveStart { padding-inline: 4px; }
       .setup-panel .field-help { margin-top: 2px; font-size: 8px; line-height: 1.05; }
