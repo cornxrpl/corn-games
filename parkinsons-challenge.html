@@ -704,13 +704,6 @@
         max-width: 22em;
         line-height: 1.3;
       }
-      .finger-counter {
-        font-size: clamp(52px, 10vw, 72px);
-        font-weight: 900;
-        color: var(--green-deep);
-        line-height: 1.1;
-      }
-      .finger-breakdown { font-size: 22px; font-weight: 800; color: var(--ink-soft); margin: 0; }
       .finger-note { font-size: 20px; font-weight: 700; color: var(--ink-soft); margin: 4px 0 0; max-width: 30em; }
       .finger-did-btn { min-height: 110px; min-width: min(440px, 100%); font-size: 30px; }
 
@@ -914,8 +907,6 @@
         /* Finger Touches */
         .finger-emoji { font-size: 56px; }
         .finger-instruction { font-size: 24px; }
-        .finger-counter { font-size: 42px; }
-        .finger-breakdown { font-size: 18px; }
         .finger-note { font-size: 16px; }
         .finger-did-btn { min-height: 84px; font-size: 26px; }
       }
@@ -934,7 +925,6 @@
         .mode-btn { min-height: 50px; }
         .finger-emoji { font-size: 44px; }
         .finger-instruction { font-size: 21px; }
-        .finger-counter { font-size: 34px; }
         .finger-did-btn { min-height: 72px; }
       }
 
@@ -1089,10 +1079,7 @@
 
         <div class="finger-body" id="finger-body">
           <div class="finger-emoji" id="finger-emoji" aria-hidden="true">🤏</div>
-          <p class="finger-instruction" id="finger-instruction">Right hand — touch your index finger to your thumb.</p>
-          <div class="finger-counter" id="finger-counter" role="status" aria-live="polite">0 / 5</div>
-          <div class="seq-dots" id="finger-dots" aria-hidden="true"></div>
-          <p class="finger-breakdown" id="finger-breakdown" hidden>Left 0/5 · Right 0/5</p>
+          <p class="finger-instruction" id="finger-instruction">Right hand — touch your index finger to your thumb, 5 times.</p>
           <p class="finger-note">Go at your own pace. Stop if tired or sore. Follow your doctor's guidance.</p>
         </div>
 
@@ -1104,10 +1091,9 @@
         </div>
 
         <div class="action-row" id="finger-main-actions">
-          <button class="big-btn finger-did-btn" id="finger-did">I Did One ✓</button>
+          <button class="big-btn finger-did-btn" id="finger-did">I Did It ✓</button>
         </div>
         <div class="action-row" id="finger-step-actions">
-          <button class="big-btn" id="finger-next" hidden>Next Step →</button>
           <button class="big-btn secondary" id="finger-skip">Skip Step</button>
           <button class="big-btn secondary" id="finger-restart">Start Over</button>
         </div>
@@ -1219,14 +1205,14 @@
         <ul>
           <li>In Mixed Play, Finger Touches can come up as one of the games in the mix, just like the others — when it does, it starts by itself, and when the routine finishes the next game in the mix follows on its own. There is no prompt and nothing to choose.</li>
           <li>Standalone Match Cards and Remember Sequence never leave on their own: they stay on their finished screen until you tap <strong>New Board</strong> / <strong>Next Round</strong> or <strong>Back</strong>. You can also open Finger Touches from the home screen any time.</li>
+          <li>Each step shows one big instruction that tells you to do the movement 5 times. Do all 5 on your own — nothing is counted on the screen — then tap the big <strong>I Did It</strong> button once to move to the next step.</li>
           <li>Touch your index finger to your thumb, 5 times with your right hand, then 5 times with your left.</li>
-          <li>Then finger to nose: the screen calls out one hand at a time in a surprise order — 5 touches with each hand, 10 in all. Just follow the big words on the screen.</li>
+          <li>Then finger to nose: touch your nose with your index finger 5 times with each hand, 10 in all.</li>
           <li>Then open and close your hand — make a fist, then open — 5 times with your right hand, then 5 times with your left.</li>
           <li>Then rest your hand on your lap and turn it over — palm up to palm down — 5 times with your right hand, then 5 times with your left.</li>
           <li>Then blink both eyes, nice and slow, 5 times.</li>
-          <li>Finish with 5 slow, deep breaths — breathe in… and out, at your own pace. Tap <strong>I Did One</strong> after each breath.</li>
-          <li>The whole routine covers your hands, your eyes, and your breathing.</li>
-          <li>After each touch, tap the big <strong>I Did One</strong> button to count it. There is no timer, and you can skip a step or start over any time.</li>
+          <li>Finish with 5 slow, deep breaths — breathe in… and out, at your own pace.</li>
+          <li>The whole routine covers your hands, your eyes, and your breathing. There is no timer, and you can skip a step or start over any time.</li>
           <li>Go at your own pace. Stop if tired or sore. Follow your doctor's guidance.</li>
         </ul>
         <h3>🖼️ Picture Puzzle</h3>
@@ -2166,21 +2152,23 @@ updateSoundButtons();
       document.getElementById("btn-sequence").addEventListener("click", function () { beginGame("sequence"); });
       document.getElementById("btn-mixed").addEventListener("click", function () { beginGame("mixed"); });
 
-          /* ================= FINGER TOUCHES ================= */
+          /* ================= FINGER TOUCHES =================
+         Each step shows one big instruction that says to do the task
+         5 times. The player does the 5 reps on their own — nothing is
+         counted on screen — then taps the big "I Did It" button once
+         to move to the next step. No per-rep tapping, no counters. */
       var FINGER_STEPS = [
-        { kind: "thumb", total: 5, emoji: "🤏", text: "Right hand — touch your index finger to your thumb." },
-        { kind: "thumb", total: 5, emoji: "🤏", text: "Left hand — touch your index finger to your thumb." },
-        { kind: "nose", total: 10, emoji: "👃", text: "" },
-        { kind: "fist", total: 5, emoji: "✊", text: "Right hand — open and close hand. Make a fist, then open." },
-        { kind: "fist", total: 5, emoji: "✊", text: "Left hand — open and close hand. Make a fist, then open." },
-        { kind: "turnover", total: 5, emoji: "🖐️", text: "Rest right hand on lap — turn it over, palm up to palm down." },
-        { kind: "turnover", total: 5, emoji: "🖐️", text: "Rest left hand on lap — turn it over, palm up to palm down." },
-        { kind: "blink", total: 5, emoji: "👁️", text: "Blink — close both eyes, then open." },
-        { kind: "breath", total: 5, emoji: "🌬️", text: "Take a slow deep breath in… and out." }
+        { emoji: "🤏", text: "Right hand — touch your index finger to your thumb, 5 times." },
+        { emoji: "🤏", text: "Left hand — touch your index finger to your thumb, 5 times." },
+        { emoji: "👃", text: "Touch your nose with your index finger — 5 times with each hand, 10 times in all." },
+        { emoji: "✊", text: "Right hand — open and close hand. Make a fist, then open, 5 times." },
+        { emoji: "✊", text: "Left hand — open and close hand. Make a fist, then open, 5 times." },
+        { emoji: "🖐️", text: "Rest right hand on lap — turn it over, palm up to palm down, 5 times." },
+        { emoji: "🖐️", text: "Rest left hand on lap — turn it over, palm up to palm down, 5 times." },
+        { emoji: "👁️", text: "Blink — close both eyes, then open, 5 times." },
+        { emoji: "🌬️", text: "Take 5 slow, deep breaths — breathe in… and out." }
       ];
       var fingerStep = 0;
-      var fingerCount = 0;
-      var noseOrder = [];
       var exerciseReturn = "home";
       /* When a game round sends the player here, fingerOnDone holds the
          "carry on to the next round" step. The routine then returns to
@@ -2190,74 +2178,25 @@ updateSoundButtons();
       var fLabel = document.getElementById("finger-step-label");
       var fEmoji = document.getElementById("finger-emoji");
       var fInstr = document.getElementById("finger-instruction");
-      var fCounter = document.getElementById("finger-counter");
-      var fDots = document.getElementById("finger-dots");
-      var fBreakdown = document.getElementById("finger-breakdown");
       var fBody = document.getElementById("finger-body");
       var fDone = document.getElementById("finger-done");
       var fDid = document.getElementById("finger-did");
-      var fNext = document.getElementById("finger-next");
       var fSkip = document.getElementById("finger-skip");
       var fAutoNote = document.getElementById("finger-auto-note");
       var fMainActions = document.getElementById("finger-main-actions");
       var fStepActions = document.getElementById("finger-step-actions");
       var fDoneActions = document.getElementById("finger-done-actions");
 
-      function makeNoseOrder() {
-        // 5 Left + 5 Right, shuffled fresh every time the nose step starts.
-        noseOrder = shuffle(["Left", "Left", "Left", "Left", "Left", "Right", "Right", "Right", "Right", "Right"]);
-      }
-      function fingerStepText() {
-        var s = FINGER_STEPS[fingerStep];
-        if (s.kind === "nose") {
-          if (fingerCount >= s.total) return "All nose touches done.";
-          return noseOrder[fingerCount] + " index finger to nose";
-        }
-        return s.text;
-      }
-      function refreshFingerDisplay() {
-        var s = FINGER_STEPS[fingerStep];
-        fCounter.textContent = fingerCount + " / " + s.total;
-        fDots.innerHTML = "";
-        for (var i = 0; i < s.total; i++) {
-          var d = document.createElement("span");
-          d.className = "seq-dot" + (i < fingerCount ? " done" : "");
-          fDots.appendChild(d);
-        }
-        if (s.kind === "nose") {
-          var l = 0, r = 0;
-          for (var j = 0; j < fingerCount; j++) {
-            if (noseOrder[j] === "Left") l++; else r++;
-          }
-          fBreakdown.hidden = false;
-          fBreakdown.textContent = "Left " + l + "/5 · Right " + r + "/5";
-        } else {
-          fBreakdown.hidden = true;
-        }
-      }
       function renderFingers() {
         var s = FINGER_STEPS[fingerStep];
-        if (s.kind === "nose") makeNoseOrder();
         fLabel.textContent = "Step " + (fingerStep + 1) + " of " + FINGER_STEPS.length;
         fEmoji.textContent = s.emoji;
-        fInstr.textContent = fingerStepText();
+        fInstr.textContent = s.text;
         fBody.hidden = false;
         fDone.hidden = true;
         fMainActions.hidden = false;
         fStepActions.hidden = false;
         fDoneActions.hidden = true;
-        fDid.hidden = false;
-        fSkip.hidden = false;
-        fNext.hidden = true;
-        refreshFingerDisplay();
-      }
-      function fingerStepDone() {
-        Audio8.goodJob();
-        fInstr.textContent = "Nice work!";
-        fDid.hidden = true;
-        fSkip.hidden = true;
-        fNext.hidden = false;
-        fNext.textContent = (fingerStep === FINGER_STEPS.length - 1) ? "Finish ✓" : "Next Step →";
       }
       function fingersAllDone() {
         fBody.hidden = true;
@@ -2296,7 +2235,6 @@ updateSoundButtons();
       function advanceFingerStep() {
         if (fingerStep >= FINGER_STEPS.length - 1) { fingersAllDone(); return; }
         fingerStep++;
-        fingerCount = 0;
         renderFingers();
       }
       function startFingers(ret, onDone) {
@@ -2306,27 +2244,23 @@ updateSoundButtons();
         exerciseReturn = ret || "home";
         fingerOnDone = onDone || null;
         fingerStep = 0;
-        fingerCount = 0;
         Audio8.startMusic();
         show("fingers");
         renderFingers();
       }
+      /* One tap per step: the player has done the task 5 times on
+         their own, so a soft tone and straight on to the next step
+         (fingersAllDone plays the finishing chime on the last one). */
       fDid.addEventListener("click", function () {
-        var s = FINGER_STEPS[fingerStep];
-        if (fingerCount >= s.total) return;
-        fingerCount++;
         Audio8.step(523.25);
-        refreshFingerDisplay();
-        if (fingerCount >= s.total) { fingerStepDone(); }
-        else { fInstr.textContent = fingerStepText(); }
+        advanceFingerStep();
       });
-      fNext.addEventListener("click", advanceFingerStep);
       fSkip.addEventListener("click", advanceFingerStep);
       document.getElementById("finger-restart").addEventListener("click", function () {
-        fingerStep = 0; fingerCount = 0; renderFingers();
+        fingerStep = 0; renderFingers();
       });
       document.getElementById("finger-again").addEventListener("click", function () {
-        fingerStep = 0; fingerCount = 0; renderFingers();
+        fingerStep = 0; renderFingers();
       });
       document.getElementById("finger-home").addEventListener("click", function () {
         takeFingerReturn(); // heading Home drops the pending next round
