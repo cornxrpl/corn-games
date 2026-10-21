@@ -1185,6 +1185,8 @@
       justify-content: center;
       align-items: flex-start;
       padding: clamp(7px, 1.6vw, 14px);
+      /* Keep the top of the board clear of the notch / top chrome. */
+      padding-top: max(clamp(7px, 1.6vw, 14px), env(safe-area-inset-top));
     }
     main {
       --fit: 1;
@@ -2648,6 +2650,14 @@
 
       function fitToViewport() {
         var root = document.querySelector('main');
+        // The board is a fixed, non-scrolling layout. If anything has
+        // shifted the page — iOS scrolling the tapped kicks field into
+        // view, the on-screen keyboard opening, a browser focus jump —
+        // snap back to the very top so the header and the top of the
+        // field are never left cut off above the screen.
+        window.scrollTo(0, 0);
+        if (document.documentElement) document.documentElement.scrollTop = 0;
+        if (document.body) document.body.scrollTop = 0;
         root.style.setProperty('--fit', '1');
         var bodyStyle = window.getComputedStyle(document.body);
         var horizontalPadding = parseFloat(bodyStyle.paddingLeft) + parseFloat(bodyStyle.paddingRight);
@@ -2835,6 +2845,12 @@
             : 'Easy mode: tap or click inside the goal to place your shot.';
         }
         resetBall();
+        // The round is starting: release the kicks field (its keyboard and
+        // the scroll iOS applied to keep it visible would otherwise leave
+        // the top of the board pushed off screen) and re-fit the whole
+        // board, tracker included, inside the viewport.
+        if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+        requestAnimationFrame(fitToViewport);
       }
 
       function showCallout(isGoal, nearFrame) {
@@ -3145,8 +3161,8 @@
         els.instruction.textContent = game.playMode === 'competitive'
           ? leagues[game.currentLeague].name + ': five kicks per round, ' + leagues[game.currentLeague].target + ' banked goals to advance.'
           : 'Set your practice shootout, then beat the moving keeper.';
-        if (game.playMode === 'competitive') els.competitiveStart.focus();
-        else els.kickInput.focus();
+        if (game.playMode === 'competitive') els.competitiveStart.focus({ preventScroll: true });
+        else els.kickInput.focus({ preventScroll: true });
         requestAnimationFrame(fitToViewport);
       }
 
@@ -3185,7 +3201,7 @@
         updateLeagueLadder();
         setPlayMode('competitive');
         els.instruction.textContent = 'AAA Soccer League: five kicks per round, 5 banked goals to advance.';
-        els.competitiveStart.focus();
+        els.competitiveStart.focus({ preventScroll: true });
         requestAnimationFrame(fitToViewport);
       }
 
@@ -3277,7 +3293,7 @@
         setTimeout(function () {
           els.coverScreen.hidden = true;
           els.gameMain.removeAttribute('inert');
-          els.startButton.focus();
+          els.startButton.focus({ preventScroll: true });
           requestAnimationFrame(fitToViewport);
         }, 2800);
       });
@@ -3368,8 +3384,8 @@
         els.instruction.textContent = game.playMode === 'competitive'
           ? leagues[game.currentLeague].name + ': five kicks per round, ' + leagues[game.currentLeague].target + ' banked goals to advance.'
           : 'Choose your next practice shootout length.';
-        if (game.playMode === 'competitive') els.competitiveStart.focus();
-        else els.kickInput.focus();
+        if (game.playMode === 'competitive') els.competitiveStart.focus({ preventScroll: true });
+        else els.kickInput.focus({ preventScroll: true });
         requestAnimationFrame(fitToViewport);
       });
       els.resetLeagues.addEventListener('click', resetLeagueJourney);
