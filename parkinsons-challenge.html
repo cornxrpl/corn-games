@@ -1079,7 +1079,7 @@
 
         <div class="finger-body" id="finger-body">
           <div class="finger-emoji" id="finger-emoji" aria-hidden="true">🤏</div>
-          <p class="finger-instruction" id="finger-instruction">Right hand — touch your index finger to your thumb, 5 times.</p>
+          <p class="finger-instruction" id="finger-instruction">Right hand — touch your index finger to your thumb 5 times.</p>
           <p class="finger-note">Go at your own pace. Stop if tired or sore. Follow your doctor's guidance.</p>
         </div>
 
@@ -1091,7 +1091,7 @@
         </div>
 
         <div class="action-row" id="finger-main-actions">
-          <button class="big-btn finger-did-btn" id="finger-did">I Did It ✓</button>
+          <button class="big-btn finger-did-btn" id="finger-did">I Did It!</button>
         </div>
         <div class="action-row" id="finger-step-actions">
           <button class="big-btn secondary" id="finger-skip">Skip Step</button>
@@ -1205,13 +1205,13 @@
         <ul>
           <li>In Mixed Play, Finger Touches can come up as one of the games in the mix, just like the others — when it does, it starts by itself, and when the routine finishes the next game in the mix follows on its own. There is no prompt and nothing to choose.</li>
           <li>Standalone Match Cards and Remember Sequence never leave on their own: they stay on their finished screen until you tap <strong>New Board</strong> / <strong>Next Round</strong> or <strong>Back</strong>. You can also open Finger Touches from the home screen any time.</li>
-          <li>Each step shows one big instruction that tells you to do the movement 5 times. Do all 5 on your own — nothing is counted on the screen — then tap the big <strong>I Did It</strong> button once to move to the next step.</li>
-          <li>Touch your index finger to your thumb, 5 times with your right hand, then 5 times with your left.</li>
-          <li>Then finger to nose: touch your nose with your index finger 5 times with each hand, 10 in all.</li>
-          <li>Then open and close your hand — make a fist, then open — 5 times with your right hand, then 5 times with your left.</li>
-          <li>Then rest your hand on your lap and turn it over — palm up to palm down — 5 times with your right hand, then 5 times with your left.</li>
-          <li>Then blink both eyes, nice and slow, 5 times.</li>
-          <li>Finish with 5 slow, deep breaths — breathe in… and out, at your own pace.</li>
+          <li>Each step shows one big instruction that tells you to do the movement 5 times. Do all 5 on your own — nothing is counted on the screen — then tap the big <strong>I Did It!</strong> button once to move to the next step.</li>
+          <li>Right hand — touch your index finger to your thumb 5 times. Then left hand — touch your index finger to your thumb 5 times.</li>
+          <li>Then touch your index finger to your nose 5 times with each hand (10 times in all).</li>
+          <li>Then right hand — open and close your hand into a fist 5 times. Then left hand — open and close your hand into a fist 5 times.</li>
+          <li>Then rest your hand on your lap. Right hand — turn your hand over 5 times. Then left hand — turn your hand over 5 times.</li>
+          <li>Then blink your eyes 5 times.</li>
+          <li>Finish by taking a slow, deep breath 5 times — breathe in… and out, at your own pace.</li>
           <li>The whole routine covers your hands, your eyes, and your breathing. There is no timer, and you can skip a step or start over any time.</li>
           <li>Go at your own pace. Stop if tired or sore. Follow your doctor's guidance.</li>
         </ul>
@@ -2155,18 +2155,18 @@ updateSoundButtons();
           /* ================= FINGER TOUCHES =================
          Each step shows one big instruction that says to do the task
          5 times. The player does the 5 reps on their own — nothing is
-         counted on screen — then taps the big "I Did It" button once
+         counted on screen — then taps the big "I Did It!" button once
          to move to the next step. No per-rep tapping, no counters. */
       var FINGER_STEPS = [
-        { emoji: "🤏", text: "Right hand — touch your index finger to your thumb, 5 times." },
-        { emoji: "🤏", text: "Left hand — touch your index finger to your thumb, 5 times." },
-        { emoji: "👃", text: "Touch your nose with your index finger — 5 times with each hand, 10 times in all." },
-        { emoji: "✊", text: "Right hand — open and close hand. Make a fist, then open, 5 times." },
-        { emoji: "✊", text: "Left hand — open and close hand. Make a fist, then open, 5 times." },
-        { emoji: "🖐️", text: "Rest right hand on lap — turn it over, palm up to palm down, 5 times." },
-        { emoji: "🖐️", text: "Rest left hand on lap — turn it over, palm up to palm down, 5 times." },
-        { emoji: "👁️", text: "Blink — close both eyes, then open, 5 times." },
-        { emoji: "🌬️", text: "Take 5 slow, deep breaths — breathe in… and out." }
+        { emoji: "🤏", text: "Right hand — touch your index finger to your thumb 5 times." },
+        { emoji: "🤏", text: "Left hand — touch your index finger to your thumb 5 times." },
+        { emoji: "👃", text: "Touch your index finger to your nose 5 times with each hand (10 times in all)." },
+        { emoji: "✊", text: "Right hand — open and close your hand into a fist 5 times." },
+        { emoji: "✊", text: "Left hand — open and close your hand into a fist 5 times." },
+        { emoji: "🖐️", text: "Rest your hand on your lap. Right hand — turn your hand over 5 times." },
+        { emoji: "🖐️", text: "Rest your hand on your lap. Left hand — turn your hand over 5 times." },
+        { emoji: "👁️", text: "Blink your eyes 5 times." },
+        { emoji: "🌬️", text: "Take a slow, deep breath 5 times." }
       ];
       var fingerStep = 0;
       var exerciseReturn = "home";
