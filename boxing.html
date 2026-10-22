@@ -165,7 +165,7 @@
          once. Other screens keep the normal 4:3 stage. */
       @media (max-width: 600px) {
         .stage.tall { aspect-ratio: 3 / 3.6; }
-        body.on-title { justify-content: center; }
+        body.on-title, body.on-center { justify-content: center; }
       }
       #scr-ladder { padding: 8px 10px; }
       #scr-ladder .panel-title { font-size: clamp(18px, 4.2vw, 26px); line-height: 1.1; margin: 0 0 2px; }
@@ -1283,6 +1283,7 @@
       $("burger-wrap").classList.toggle("on", name === "ladder");
       $("stage").classList.toggle("tall", name === "ladder" || name === "training" || name === "cheats" || name === "result" || name === "victory" || name === "champloss" || name === "gameover");
       document.body.classList.toggle("on-title", name === "title");
+      document.body.classList.toggle("on-center", name === "intro" || name === "fight");
       if(name !== "ladder") setBurger(false);
       updateCheatIndicators();
       if(from !== name || name === "title"){
