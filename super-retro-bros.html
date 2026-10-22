@@ -297,15 +297,14 @@
         <h2>🎮 LEVEL SELECT</h2>
         <p>Tester cheat — enter a level from 1 to 40 to start a fresh run there (score, corn, lives, and power-ups reset). CANCEL goes back to where you were, untouched.</p>
         <div class="row">
-          <input type="number" id="levelInput" min="1" max="40" step="1" value="1" inputmode="numeric" aria-label="Level number, 1 to 40" />
+          <input type="number" id="levelInput" min="1" step="1" value="1" inputmode="numeric" aria-label="Level number, 1 to 40" />
           <button id="levelGo">▶ GO</button>
           <button id="levelCancel">CANCEL</button>
         </div>
       </div>
     </div>
 
-    <script src="./shared/hub.js"></script>
-    <script>
+    <script src="./shared/hub.js"></script>     <script>
     "use strict";
     /* ============================================================
        SUPER RETRO BROS — an 8-bit farm platformer
@@ -425,7 +424,7 @@
     var PAL = { K:'#22222e', W:'#ffffff', Y:'#ffd83d', O:'#f39c1f', G:'#43b04c', g:'#2e7d32',
                 B:'#2b59c3', b:'#173a7d', R:'#d8402f', r:'#9e2418', S:'#f4b183', s:'#cf8552', N:'#7a4a21',
                 P:'#f6a5c0', p:'#e87ea1', L:'#ffe3ef', C:'#f4f4f4', c:'#c9c9c9', X:'#39ff6a',
-                D:'#5b3a1e', H:'#ffe873', E:'#8e6e36', a:'#48485c', d:'#17171f' };
+                D:'#5b3a1e', H:'#ffe873', E:'#8e6e36', a:'#48485c', d:'#17171f', v:'#00ff00' };
     function drawMap(map, x, y, px, flip){
       var h = map.length, w = map[0].length;
       for (var j = 0; j < h; j++){
@@ -557,9 +556,38 @@
       ".NNNNDDDDNNNN.",
       ".KK........KK."
     ];
+    /* Stone — the secret boss at the end of Level 589, modeled on Ryan's
+       picture of him: spiky dark hair, a white face with black sunglasses
+       (neon-green lenses), a black outfit with #00ff00 green accents and
+       chain, and a black cape down both sides. 18×22 at px 5 = 90×110.
+       'v' in the palette is the exact #00ff00. */
+    var STONE_MAP = [
+      "..K...K...K...K...",
+      ".KKK.KKK.KKK.KKK..",
+      ".KKKKKKKKKKKKKKK..",
+      "..KKKKKKKKKKKKKK..",
+      "..KWWWWWWWWWWWWK..",
+      "..KWWWWWWWWWWWWK..",
+      "..KWKKKKKKKKKKWK..",
+      "..KWKKvvKKvvKKWK..",
+      "..KWWWWWWWWWWWWK..",
+      "..KWWWWKKKKWWWWK..",
+      "...KWWWWWWWWWWK...",
+      ".....KKvKKvKK.....",
+      ".ddKKKKKKKKKKKKdd.",
+      ".ddKKKKvKKvKKKKdd.",
+      ".ddKKKKKvvKKKKKdd.",
+      ".ddKKKKKKvKKKKKdd.",
+      ".ddKKKKKKKKKKKKdd.",
+      ".ddKKKvvvvvvKKKdd.",
+      "..ddKKKK..KKKKdd..",
+      "..ddKKKK..KKKKdd..",
+      "..ddKKKK..KKKKdd..",
+      ".dddKKKK..KKKKddd."
+    ];
 
     /* ---------------- GAME STATE ---------------- */
-    var state = 'title'; // title | select | play | meal | warp | over | win
+    var state = 'title'; // title | select | play | meal | warp | over | win | hug
     /* Title-screen art (the generated Super Retro Bros cover). Drawn
        letterboxed on the title screen only; ENTER GAME is a real DOM
        button over it, never painted into the art. */
@@ -575,9 +603,12 @@
        still cost the whole life at once. */
     var ENERGY_MAX = 4, energy = ENERGY_MAX;
     var level = null, player = null, camX = 0, frame = 0;
-    var kernels = [], bales = [], bossCorn = [], particles = [], floaters = [], popups = [];
-    var timeLeft = 300, levelTime = 0, throwCd = 0, bossRef = null;
+    var kernels = [], bales = [], bossCorn = [], fireballs = [], particles = [], floaters = [], popups = [];
+    var timeLeft = 300, levelTime = 0, throwCd = 0, bossRef = null, stoneRef = null;
     var stateTimer = 0, mealBonus = 0, paused = false;
+    /* Secret Level 589 hug scene: Stone's 💦 tears and the hero's
+       walk-in position (screen coordinates, set by startHugScene). */
+    var hugTears = [], hugHeroX = 0;
     var bannerUntil = 0;
     /* Staged power-ups (kept for the whole run, reset on a new game):
        pFast = 🥾 speed boot, pThrow = 🌽 corn thrower, pDouble = 🌽 x2 double corn. */
@@ -646,6 +677,7 @@
       for (var c = c0; c <= c1; c++){ t[GROUND_ROW][c] = 1; t[GROUND_ROW + 1][c] = 1; }
     }
     function genLevel(n){
+      if (n === 589) return genSecretLevel();
       var rand = mulberry32(n * 7919 + 1013);
       var isBoss = (n === 40);
       var W = isBoss ? 56 : Math.min(72 + n * 3, 175);
@@ -786,6 +818,38 @@
                     shootT: 170, homeX: (W - 8) * TILE + 2, onGround: false, hitWall: false };
       return L;
     }
+    /* SECRET LEVEL 589 — reachable ONLY by entering 589 in the SCORE ×5
+       level-select cheat. It is not part of the 1–40 progression: no
+       finish stalk, no farmhouse, no Corn Warp, no Barn Monster, and no
+       regular corn — the only pickups are coins stamped XRP. Exactly 3
+       staged power-up crates (🥾 → 🌽 → 🌽 x2) sit at row 6 over the
+       flat field, and Stone waits at the end of the field. */
+    function genSecretLevel(){
+      var W = 72;
+      var t = blankTiles(W);
+      var L = { n: 589, w: W, tiles: t, enemies: [], items: [], powerups: [], boss: false, monster: null,
+                secret: true, stalkCol: W + 50, warpCol: -1, th: themeForLevel(589),
+                startX: 2 * TILE, startY: GROUND_ROW * TILE - 60,
+                stoneSpawn: { x: (W - 9) * TILE, y: GROUND_ROW * TILE - 110 } };
+      fillGround(t, 0, W - 1);
+      for (var r = 0; r < ROWS; r++){ t[r][0] = 4; t[r][W - 1] = 4; }
+      function addXrp(px, py){ L.items.push({ x: px, y: py, golden: false, xrp: true, taken: false, fromBlock: false, vy: 0, t: Math.random() * 6 }); }
+      function addXrpRow(col0, count, rowY){ for (var i = 0; i < count; i++) addXrp((col0 + i) * TILE + 7, rowY * TILE + 8); }
+      // XRP coin rows along the field — some at ground-grab height,
+      // some a hop up, like corn rows in the regular fields
+      addXrpRow(4, 5, 8); addXrpRow(13, 4, 7); addXrpRow(20, 5, 8); addXrpRow(28, 4, 7);
+      addXrpRow(35, 5, 8); addXrpRow(44, 4, 7); addXrpRow(51, 5, 8);
+      // hay platforms with XRP coins floating above them
+      var plats = [16, 32, 48];
+      for (var pi = 0; pi < plats.length; pi++){
+        for (var pj = 0; pj < 3; pj++) t[6][plats[pi] + pj] = 4;
+        addXrpRow(plats[pi], 3, 5);
+      }
+      // exactly 3 staged power-up crates, spaced along the field at
+      // crate height over solid ground, bumpable from underneath
+      t[6][8] = 3; t[6][24] = 3; t[6][40] = 3;
+      return L;
+    }
     function tileAt(tx, ty){
       if (ty < 0) return 0;
       if (ty >= ROWS) return 0;
@@ -799,9 +863,9 @@
       level = genLevel(n);
       player = newPlayer(level.startX, level.startY);
       lastSafe = { x: level.startX, y: level.startY };
-      kernels = []; bales = []; bossCorn = []; particles = []; floaters = []; popups = [];
+      kernels = []; bales = []; bossCorn = []; fireballs = []; particles = []; floaters = []; popups = [];
       camX = 0; timeLeft = 300; levelTime = 0; throwCd = 0;
-      bossRef = null;
+      bossRef = null; stoneRef = null;
       if (level.boss){
         bossRef = { x: level.bossSpawn.x, y: level.bossSpawn.y, w: 252, h: 148, vx: 0, vy: 0,
                     hp: 24, maxhp: 24, dir: -1, mode: 'stalk', modeT: 0, flash: 0, dead: false,
@@ -809,6 +873,12 @@
         showBanner('LEVEL 40', 'THE CORPORATE COMBINE!', 2400);
         sfx('charge');
         dbg('Corporate Combine boss — it fires hay bales and enemy corn at the player (both hurt / drain energy; the fired corn is an attack, not a pickup)');
+      } else if (level.secret){
+        stoneRef = { x: level.stoneSpawn.x, y: level.stoneSpawn.y, w: 90, h: 110, vx: 0, vy: 0,
+                     hp: 10, maxhp: 10, dir: -1, flash: 0, dead: false, fireT: 120,
+                     homeX: level.stoneSpawn.x, onGround: false, hitWall: false };
+        showBanner('SECRET LEVEL 589', 'A field of XRP coins…', 2400);
+        dbg('SECRET LEVEL 589 — XRP coins only, 3 power-up crates, and Stone waits at the end (10 thrown-corn hits; he fires #00ff00 fireballs)');
       } else {
         showBanner('LEVEL ' + n, n === 1 ? 'Grab the corn — reach the big ear!' : level.th.name, 1700);
       }
@@ -960,6 +1030,25 @@
 
     function collectCorn(it){
       it.taken = true;
+      if (it.xrp){
+        // Secret Level 589's XRP coins: they score like a corn pickup
+        // (+100) and count toward the corn total / 100-corn extra life,
+        // exactly like a regular pickup — there is no regular corn here.
+        cornTotal++; score += 100;
+        sfx('corn');
+        burst(it.x + 10, it.y + 12, ['#00ff00', '#ccffdd', '#ffd83d'], 8, 2.4);
+        addPopup(it.x - 8, it.y - 22, 'XRP +100', '#00ff00');
+        if (cornTotal >= 100){
+          cornTotal -= 100;
+          lives++;
+          addPopup(it.x - 16, it.y - 48, '★ EXTRA LIFE! ★', '#7ddb6a');
+          sfx('gold');
+          dbg('100 corn reached — EXTRA LIFE! Lives now ' + lives);
+        }
+        dbg('XRP coin collected — corn ×' + cornTotal + ', score ' + score);
+        updateHUD();
+        return;
+      }
       if (it.golden){
         cornTotal++; score += 500;
         if (!player.power){ player.power = true; sfx('gold'); addPopup(it.x - 8, it.y - 20, 'GOLDEN!', '#ffd83d'); }
@@ -1049,7 +1138,7 @@
       // fell in a pit
       if (p.y > ROWS * TILE + 60){ loseLife('pit'); return; }
       // level goal: the big ear on the stalk
-      if (!level.boss && p.x + p.w >= level.stalkCol * TILE + 8){
+      if (!level.boss && !level.secret && p.x + p.w >= level.stalkCol * TILE + 8){
         finishLevel();
       }
     }
@@ -1171,6 +1260,28 @@
             dbg('Barn Monster DEFEATED on level ' + levelNum + ' — +1000, score ' + score);
           } else {
             addPopup(k.x - 16, k.y - 22, 'HIT! ' + mo.hp + ' LEFT', '#ffd83d');
+            sfx('bosshit');
+          }
+          updateHUD();
+        }
+        if (!dead && stoneRef && !stoneRef.dead && overlap(kb, stoneRef)){
+          // Stone (secret Level 589): every thrown kernel counts as one
+          // hit — the 🌽 x2 second kernel counts separately, like the
+          // Barn Monster. 10 hits beat him.
+          var st = stoneRef;
+          st.hp--; st.flash = 8;
+          burst(k.x, k.y, ['#00ff00', '#ccffdd', '#ffd83d'], 8, 2.6);
+          dead = true;
+          if (st.hp <= 0){
+            st.dead = true;
+            score += 2000;
+            addPopup(st.x - 4, st.y - 26, 'STONE DOWN! +2000', '#00ff00');
+            burst(st.x + st.w / 2, st.y + st.h / 2, ['#00ff00', '#ffffff', '#22222e'], 30, 4.5);
+            sfx('boom');
+            dbg('Stone DEFEATED on secret level 589 — +2000, score ' + score);
+            startHugScene();
+          } else {
+            addPopup(k.x - 16, k.y - 22, 'HIT! ' + st.hp + ' LEFT', '#00ff00');
             sfx('bosshit');
           }
           updateHUD();
@@ -1347,6 +1458,73 @@
       }
     }
 
+    /* Stone — the secret boss at the end of Level 589. He paces a short
+       post near the end of the field, faces the player, and fires
+       #00ff00 fireballs on a timer once the player is in range. Touching
+       him hurts like any enemy, but he never blocks the field: the
+       player can always run or jump right past him. */
+    function updateStone(){
+      var s = stoneRef;
+      if (!s || s.dead) return;
+      if (s.flash > 0) s.flash--;
+      var pcx = player.x + player.w / 2, scx = s.x + s.w / 2;
+      s.dir = pcx < scx ? -1 : 1;
+      var want = clamp(pcx, s.homeX + s.w / 2 - 70, s.homeX + s.w / 2 + 70);
+      var dx = want - scx;
+      s.vx = Math.abs(dx) < 6 ? 0 : clamp(dx * 0.02, -0.6, 0.6);
+      s.vy = Math.min(s.vy + 0.55, 14);
+      s.hitWall = false;
+      collideMove(s, false);
+      // fireballs: straight shots aimed at the player's height, in
+      // exact #00ff00 — dodge or jump them like any enemy projectile
+      if (s.fireT > 0) s.fireT--;
+      if (s.fireT <= 0 && Math.abs(pcx - scx) < 900){
+        s.fireT = 125 + Math.floor(Math.random() * 40);
+        var fdir = pcx < scx ? -1 : 1;
+        var fx = scx + fdir * (s.w / 2 + 8), fy = s.y + 44;
+        var pcy = player.y + player.h / 2;
+        var fvy = clamp((pcy - fy) * 0.014, -2.6, 2.6);
+        fireballs.push({ x: fx, y: fy, vx: fdir * 6.0, vy: fvy, t: 0, dir: fdir });
+        sfx('throw');
+      }
+      if (overlap(player, s)) hurtPlayer(scx);
+    }
+
+    /* Stone's fireballs: fast #00ff00 orbs that fly straight on the line
+       they were aimed on (no gravity). Touching one hurts exactly like
+       a hay bale — one energy chunk, Golden absorbs it free. */
+    function updateFireballs(){
+      for (var i = fireballs.length - 1; i >= 0; i--){
+        var fb = fireballs[i];
+        fb.t++; fb.x += fb.vx; fb.y += fb.vy;
+        var dead = fb.t > 200 || fb.y > ROWS * TILE || fb.x < -80 || (level && fb.x > level.w * TILE + 80);
+        if (!dead && isSolid(tileAt(Math.floor(fb.x / TILE), Math.floor(fb.y / TILE)))) dead = true;
+        if (!dead && overlap(player, { x: fb.x - 11, y: fb.y - 11, w: 22, h: 22 })){
+          hurtPlayer(fb.x);
+          burst(fb.x, fb.y, ['#00ff00', '#ccffdd', '#ffffff'], 8, 2.6);
+          fireballs.splice(i, 1);
+          if (state !== 'play') return;
+          continue;
+        }
+        if (dead){
+          burst(fb.x, fb.y, ['#00ff00', '#0a5c1e'], 5, 2);
+          fireballs.splice(i, 1);
+        }
+      }
+    }
+
+    /* Stone is beaten — no farmhouse, no win finale. He starts crying,
+       and the hug scene takes over: the hero walks in, hugs him, and
+       tells him everything is going to be all right. After the scene
+       the run ends back at the title screen, score kept like any run
+       end — there is no Level 590. */
+    function startHugScene(){
+      state = 'hug'; stateTimer = 0; runActive = false;
+      hugTears = []; hugHeroX = 90;
+      musicStop(); sfx('gold');
+      dbg('Stone is crying — the hero goes to hug him');
+    }
+
     function updateFx(){
       for (var i = particles.length - 1; i >= 0; i--){
         var pt = particles[i];
@@ -1380,6 +1558,8 @@
               updateMonster();
               if (state === 'play') updateBales();
               if (state === 'play') updateBossCorn();
+              if (state === 'play' && level.secret) updateStone();
+              if (state === 'play' && level.secret) updateFireballs();
             }
           }
         }
@@ -1398,6 +1578,22 @@
           loadLevel(dest, true);
           showBanner('CORN WARP!', 'Skipped ahead to Level ' + dest + '  ·  +250', 2000);
         }
+      }
+      else if (state === 'hug'){
+        stateTimer++;
+        // the hero walks in from the left until he's right beside Stone
+        var hugTargetX = VW / 2 + 26;
+        if (hugHeroX < hugTargetX) hugHeroX = Math.min(hugTargetX, hugHeroX + 2.4);
+        // Stone's tears: 💦 drops spawn at his face and fall
+        if (stateTimer % 7 === 0){
+          hugTears.push({ x: VW / 2 + 94 + Math.random() * 58, y: GROUND_ROW * TILE - 70, vx: (Math.random() - 0.5) * 0.9, vy: 0.4, t: 0 });
+        }
+        for (var tI = hugTears.length - 1; tI >= 0; tI--){
+          var tr2 = hugTears[tI];
+          tr2.t++; tr2.vy += 0.22; tr2.x += tr2.vx; tr2.y += tr2.vy;
+          if (tr2.t > 46 || tr2.y > GROUND_ROW * TILE + 4) hugTears.splice(tI, 1);
+        }
+        updateFx();
       }
       else if (state === 'meal' || state === 'over' || state === 'win'){ stateTimer++; }
     }
@@ -1498,6 +1694,7 @@
     function confirmAdvance(){
       audioInit();
       if (state === 'meal' && stateTimer > 40) advanceMeal();
+      else if (state === 'hug' && stateTimer > 160) toTitle();
       else if ((state === 'over' || state === 'win') && stateTimer > 45) toTitle();
       else if (state === 'title') enterSelect();
       else if (state === 'select') startGame();
@@ -1573,9 +1770,14 @@
     function goToLevel(){
       var n = parseInt(levelInput.value, 10);
       if (isNaN(n)) return;
-      n = clamp(Math.round(n), 1, 40);
+      n = Math.round(n);
+      // 589 is the secret level — it works ONLY when typed into this
+      // cheat. It appears in no level list, menu, button, or How to
+      // Play. Anything else keeps the usual 1–40 clamp, as before.
+      var secret589 = (n === 589);
+      if (!secret589) n = clamp(n, 1, 40);
       closeLevelSelect(false);
-      dbg('CHEAT: level select — jumping to level ' + n + ' (fresh run)');
+      dbg(secret589 ? 'CHEAT: level select — SECRET LEVEL 589 (fresh run)' : 'CHEAT: level select — jumping to level ' + n + ' (fresh run)');
       // picking a level starts a fresh run at that level
       score = 0; cornTotal = 0; lives = 3; energy = ENERGY_MAX; superTaps = 0; trophyTaps = 0;
       pFast = false; pThrow = false; pDouble = false;
@@ -1610,7 +1812,7 @@
        a fresh Level 1 jump. Taps 1–4 do nothing. */
     function trophyCheat(){
       trophyTaps = 0;
-      if (runActive && level && !level.boss){
+      if (runActive && level && !level.boss && !level.secret){
         dbg('CHEAT: farmhouse jump (right 🏆 tapped 5×) — level ' + levelNum + "'s farmhouse");
         finishLevel();
       } else {
@@ -1674,6 +1876,7 @@
     // touch A/B also advance the meal / end screens
     setInterval(function(){
       if (state === 'meal' && stateTimer > 40 && (pressed.jump || pressed.throw)){ pressed.jump = pressed.throw = false; advanceMeal(); }
+      else if (state === 'hug' && stateTimer > 160 && (pressed.jump || pressed.throw)){ pressed.jump = pressed.throw = false; toTitle(); }
       else if ((state === 'over' || state === 'win') && stateTimer > 45 && (pressed.jump || pressed.throw)){ pressed.jump = pressed.throw = false; toTitle(); }
       else if (state === 'title' && pressed.jump){ pressed.jump = false; enterSelect(); }
       else if (state === 'select' && pressed.jump){ pressed.jump = false; startGame(); }
@@ -1713,6 +1916,19 @@
         ctx.fillRect(x + 1 * s, y + 2 * s, tw * s, tw * s);
         ctx.fillRect(x + 16 * s, y + 8 * s, tw * s, tw * s);
       }
+    }
+    function drawXrpCoin(x, y){
+      // a gold coin stamped XRP — the only pickup in secret Level 589
+      var cxp = x + 10, cyp = y + 12;
+      ctx.fillStyle = '#b8890f';
+      ctx.beginPath(); ctx.arc(cxp, cyp, 17, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffd83d';
+      ctx.beginPath(); ctx.arc(cxp, cyp, 14, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffe873';
+      ctx.beginPath(); ctx.arc(cxp - 2, cyp - 2, 10, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(cxp - 9, cyp - 10, 4, 4);
+      text('XRP', cxp, cyp - 4, 7.5, '#7a5b12', 'center');
     }
     function drawPowerupIcon(kind, x, y){
       // the staged power-ups, drawn exactly as their symbols: 🥾 / 🌽 / 🌽 x2
@@ -1857,7 +2073,11 @@
     var DECORS = ['barn', 'windmill', 'tree', 'tower'];
     var FENCES = ['rail', 'picket', 'stone'];
     var BOSS_THEME = { name:'AGROCORP GROUNDS', skyTop:'#241f33', skyBot:'#59303e', hillFar:'#33222e', hillNear:'#241820', body:'moon', bodyC:'#e0483a', bodyC2:'#b03024', cloud:'rgba(40,32,48,0.80)', stars:false, grass:'#4c4438', grassHi:'#5c5346', dirt:'#3a3230', dirtDark:'#2c2624', tuft:null, brick:'#5a4a42', brickEdge:'#463a34', stalk:'#5a6e3a', barn:'#333945', leaf:'#33302e', decor:'factory', fence:'stone' };
+    /* Secret Level 589's own look: a dark night field lit in Stone's
+       black and #00ff00 (bright green crop tufts, green-tinted bricks). */
+    var STONE_THEME = { name:'THE SECRET FIELD', skyTop:'#071a0e', skyBot:'#14532a', hillFar:'#0e2f1a', hillNear:'#0a2413', body:'moon', bodyC:'#eaffea', bodyC2:'#b8e6c0', cloud:'rgba(0,60,20,0.55)', stars:true, grass:'#1e7a38', grassHi:'#2fae4e', dirt:'#3a2c1c', dirtDark:'#2a1f12', tuft:'#00ff00', brick:'#2e4a34', brickEdge:'#203626', stalk:'#2fae4e', barn:'#12351c', leaf:'#14532a', decor:'tower', fence:'stone' };
     function themeForLevel(n){
+      if (n === 589) return STONE_THEME;
       if (n === 40) return BOSS_THEME;
       var base = LEVEL_THEMES[(n - 1) % LEVEL_THEMES.length];
       var th = {};
@@ -2105,7 +2325,7 @@
       }
     }
     function drawStalk(){
-      if (level.boss) return;
+      if (level.boss || level.secret) return;
       var x = level.stalkCol * TILE - camX + 19;
       if (x < -80 || x > VW + 80) return;
       var GY = GROUND_ROW * TILE, topY = 1 * TILE;
@@ -2138,7 +2358,8 @@
         var ix = it.x - camX;
         if (ix < -40 || ix > VW + 40) continue;
         var iy = it.fromBlock ? it.y : it.y + Math.sin(it.t) * 3;
-        drawCornEar(ix, iy, 1, it.golden, it.t + frame * 0.016);
+        if (it.xrp) drawXrpCoin(ix, iy);
+        else drawCornEar(ix, iy, 1, it.golden, it.t + frame * 0.016);
       }
       // power-ups sitting on top of their crate, waiting to be picked up
       for (var q = 0; q < level.powerups.length; q++){
@@ -2183,6 +2404,24 @@
             ctx.fillRect(mx2 + mo2.w / 2 - barW / 2 + sg * (segW + segGap), my2 - 21, segW, 8);
           }
           text(mo2.hp + ' HITS LEFT', mx2 + mo2.w / 2, my2 - 58, 8, '#ffd83d', 'center', 'rgba(0,0,0,0.55)');
+        }
+      }
+      // Stone (secret Level 589), with his name and hits-left bar overhead
+      if (stoneRef && !stoneRef.dead){
+        var st2 = stoneRef, sx4 = Math.round(st2.x - camX), sy4 = Math.round(st2.y);
+        if (sx4 > -160 && sx4 < VW + 160){
+          drawMap(STONE_MAP, sx4, sy4, 5, st2.dir > 0);
+          if (st2.flash > 0 && (frame >> 1) % 2 === 0){
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.fillRect(sx4, sy4, st2.w, st2.h);
+          }
+          text('STONE', sx4 + st2.w / 2, sy4 - 36, 10, '#00ff00', 'center', 'rgba(0,0,0,0.55)');
+          var sSegW = 9, sBarW = st2.maxhp * sSegW + (st2.maxhp - 1) * 2;
+          for (var sSg = 0; sSg < st2.maxhp; sSg++){
+            ctx.fillStyle = sSg < st2.hp ? '#00ff00' : 'rgba(16,16,16,0.65)';
+            ctx.fillRect(sx4 + st2.w / 2 - sBarW / 2 + sSg * (sSegW + 2), sy4 - 21, sSegW, 8);
+          }
+          text(st2.hp + ' HITS LEFT', sx4 + st2.w / 2, sy4 - 58, 8, '#00ff00', 'center', 'rgba(0,0,0,0.55)');
         }
       }
       // boss
@@ -2245,6 +2484,19 @@
         // sharp red tip
         ctx.fillStyle = '#e0483a'; ctx.fillRect(16, -3, 6, 6);
         ctx.restore();
+      }
+      // Stone's fireballs (secret Level 589) — glowing orbs in exact
+      // #00ff00, with a white-hot core and a flickering green halo
+      for (var fI2 = 0; fI2 < fireballs.length; fI2++){
+        var fb2 = fireballs[fI2], fx3 = Math.round(fb2.x - camX), fy3 = Math.round(fb2.y);
+        if (fx3 < -50 || fx3 > VW + 50) continue;
+        ctx.fillStyle = (frame >> 2) % 2 === 0 ? 'rgba(0,255,0,0.30)' : 'rgba(0,255,0,0.18)';
+        ctx.fillRect(fx3 - 17, fy3 - 17, 34, 34);
+        ctx.fillStyle = '#00ff00';
+        ctx.fillRect(fx3 - 12, fy3 - 7, 24, 14);
+        ctx.fillRect(fx3 - 7, fy3 - 12, 14, 24);
+        ctx.fillStyle = '#eaffea';
+        ctx.fillRect(fx3 - 3, fy3 - 3, 6, 6);
       }
       // player
       if (player && !(player.invuln > 0 && (frame >> 2) % 2 === 0)){
@@ -2400,6 +2652,50 @@
       text('+1 HEART ♥ · TIME BONUS +' + mealBonus, VW / 2, VH - 48, 11, '#7ddb6a', 'center');
       if (stateTimer > 40) text(levelNum + 1 === 40 ? 'NEXT: THE CORPORATE COMBINE! — ENTER / TAP ▸' : 'ENTER / TAP FOR LEVEL ' + (levelNum + 1) + ' ▸', VW / 2, VH - 22, 10.5, '#ffd83d', 'center');
     }
+    function drawHug(){
+      // Secret Level 589's ending: Stone, beaten, stands crying at the
+      // end of the field while the hero walks in and hugs him.
+      var th = level.th, GY = GROUND_ROW * TILE;
+      drawBackground(th);
+      ctx.fillStyle = th.grass; ctx.fillRect(0, GY, VW, 13);
+      ctx.fillStyle = th.grassHi; ctx.fillRect(0, GY, VW, 5);
+      ctx.fillStyle = th.dirt; ctx.fillRect(0, GY + 13, VW, VH - GY - 13);
+      var stoneX = VW / 2 + 80, stoneY = GY - 110;
+      // Stone, crying — animated tear streaks run down his white face
+      // from under the sunglasses
+      drawMap(STONE_MAP, stoneX, stoneY, 5, false);
+      ctx.fillStyle = '#8fd0ff';
+      var tl = 9 + Math.sin(frame * 0.2) * 3;
+      ctx.fillRect(stoneX + 24, stoneY + 40, 4, tl + 7);
+      ctx.fillRect(stoneX + 62, stoneY + 40, 4, tl + 3);
+      text('STONE', stoneX + 45, stoneY - 26, 10, '#00ff00', 'center', 'rgba(0,0,0,0.55)');
+      // 💦 tears flying off his face
+      ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      ctx.font = '16px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+      for (var tI2 = 0; tI2 < hugTears.length; tI2++){
+        var tr3 = hugTears[tI2];
+        ctx.globalAlpha = Math.max(0, 1 - tr3.t / 46);
+        ctx.fillText('💦', tr3.x, tr3.y);
+      }
+      ctx.globalAlpha = 1;
+      // the hero walks in and hugs him
+      var hugging = hugHeroX >= VW / 2 + 26;
+      var legs = hugging ? 'stand' : (Math.floor(frame / 9) % 2 ? 'walk' : 'stand');
+      drawHeroSprite(heroIdx, hugHeroX, GY - 96, 4, 1, legs, false);
+      if (hugging){
+        text('♥', hugHeroX + 60, GY - 122 + Math.sin(frame * 0.08) * 3, 15, '#ff8a7a', 'center');
+        // the hug itself: hero name on its own line, then his exact words
+        ctx.fillStyle = 'rgba(10,16,6,0.85)';
+        ctx.fillRect(VW / 2 - 330, 82, 660, 68);
+        ctx.strokeStyle = '#00ff00'; ctx.lineWidth = 2;
+        ctx.strokeRect(VW / 2 - 330, 82, 660, 68);
+        text(HEROES[heroIdx].name + ':', VW / 2, 94, 9.5, '#7ddb6a', 'center');
+        text('Everything is going to be all right!', VW / 2, 114, 15, '#fff', 'center');
+      } else {
+        text('Stone is crying…', VW / 2, 100, 13, '#fff', 'center', 'rgba(0,0,0,0.5)');
+      }
+      if (stateTimer > 200) text('ENTER / TAP ▸', VW / 2, VH - 30, 10.5, '#ffd83d', 'center');
+    }
     function drawOver(){
       drawBackground(LEVEL_THEMES[2]);
       ctx.fillStyle = 'rgba(30,6,4,0.45)'; ctx.fillRect(0, 0, VW, VH);
@@ -2454,6 +2750,7 @@
       else if (state === 'select') drawSelect();
       else if (state === 'warp') drawWarp();
       else if (state === 'meal') drawMeal();
+      else if (state === 'hug') drawHug();
       else if (state === 'over') drawOver();
       else if (state === 'win') drawWin();
       else drawWorld();
