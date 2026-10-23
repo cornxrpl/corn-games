@@ -771,15 +771,11 @@
         // hay platform for dodging + golden corn perch
         for (var c = 10; c <= 13; c++) t[6][c] = 4;
         for (var c3 = 24; c3 <= 29; c3++) t[5][c3] = 4;
-        // In front of the Combine: ONE hay block instead of the old
-        // 4-block platform. It sits at row 5, so its top (y=240) rides
-        // slightly higher than the Combine's top edge (y=284) — the
-        // player can stand on it above the Combine and pelt it from
-        // safety (no touch overlap up there). A full held jump from the
-        // arena floor reaches the top (rise needed 192px; max jump rise
-        // is ~217px), and the Combine's charges still stop against it,
-        // since its rolling body overlaps row 5.
-        t[5][42] = 4;
+        // The single hay block that used to sit in front of the Combine
+        // (row 5, column 42) was REMOVED at Ryan's request — nothing
+        // replaces it. The Combine's charge is unaffected: charge mode
+        // times out back to stalk after 66 frames, and the arena's side
+        // walls (columns 0–1 and W-2–W-1) stop it at either end.
         addCorn(26 * TILE + 14, 4 * TILE + 10, true);
         // The boss arena carries the same minimum of 3 power-up crates.
         // They sit at row 4 — above the Combine's body (its top edge rides
@@ -1644,14 +1640,16 @@
       if (Math.abs(pcx - bcx) < 1100){
         if (b.baleT > 0) b.baleT--;
         if (b.baleT <= 0){
-          b.baleT = 132 + Math.floor(Math.random() * 36);
+          // fire rate DOUBLED at Ryan's request: was 132 + rand*36
+          b.baleT = 66 + Math.floor(Math.random() * 18);
           var baleDir = pcx < bcx ? -1 : 1;
           bales.push({ x: bcx + baleDir * (b.w / 2) - 13, y: b.y + 52, vx: baleDir * (5.0 + Math.random() * 1.125), vy: -6.75, t: 0, fromBoss: true });
           sfx('throw');
         }
         if (b.cornT > 0) b.cornT--;
         if (b.cornT <= 0){
-          b.cornT = 108 + Math.floor(Math.random() * 40);
+          // fire rate DOUBLED at Ryan's request: was 108 + rand*40
+          b.cornT = 54 + Math.floor(Math.random() * 20);
           var cornDir = pcx < bcx ? -1 : 1;
           var cornMuzzleX = bcx + cornDir * (b.w / 2);
           var cornMuzzleY = b.y + 40;
