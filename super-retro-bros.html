@@ -57,6 +57,7 @@
         pointer-events:none; white-space:nowrap;
       }
       #hudScoreCell{ pointer-events:auto; cursor:pointer; }
+      #hudTimeCell{ pointer-events:auto; cursor:pointer; }
       #hud .cell{ display:flex; align-items:center; gap:5px; }
       #hud .label{ opacity:.85; font-size:.72em; display:block; }
       #hudLives{ color:#ff8a7a; letter-spacing:1px; }
@@ -83,6 +84,12 @@
         text-shadow:3px 3px 0 rgba(0,0,0,.6), -1px -1px 0 rgba(0,0,0,.35);
         opacity:0; transition:opacity .25s;
       }
+      /* Level-start banners (LEVEL n / LEVEL 40 / SECRET LEVEL 589 /
+         THE MOON) sit higher, in the clear sky: below the top stats row
+         but with the title + subtitle ending above the hilltops, so the
+         text never falls across hills, fences, platforms, or ground.
+         Other mid-game banners keep the default mid-screen spot. */
+      #banner.start{ top:18%; }
       /* Title screen: a real ENTER GAME button over the title art (the button
          text is NOT painted into the art). The 🏆 pair flanking "Bros." is
          painted into the art itself, both ears pointing outward. */
@@ -202,7 +209,7 @@
           <div class="cell"><span><span class="label">CORN</span>🌽×<span id="hudCorn">0</span></span></div>
           <div class="cell"><span><span class="label">LEVEL</span><span id="hudLevel">1</span></span></div>
           <div class="cell"><span><span id="hudCheat">★ INVINCIBLE</span><span id="hudPower">★ GOLDEN</span><span id="hudPowers"></span></span></div>
-          <div class="cell"><span><span class="label">TIME</span><span id="hudTime">300</span></span></div>
+          <div class="cell" id="hudTimeCell" role="button" aria-label="Time"><span><span class="label">TIME</span><span id="hudTime">300</span></span></div>
           <div class="cell"><span><span class="label">ENERGY</span><span id="hudEnergy">████</span></span></div>
           <div class="cell"><span id="hudLives">♥♥♥</span></div>
         </div>
@@ -267,6 +274,7 @@
           <li><b>Tester cheat:</b> on the title screen, tap the word SUPER 5 times to turn on invincibility. A ★ INVINCIBLE tag shows in the stats while it's on.</li>
           <li><b>Tester cheat — level select:</b> during the game, tap SCORE in the stats at the top 5 times to open the level select. (The title screen shows no stats, so this one is in-game only.) Enter any level from 1 to 40 and hit GO to start a fresh run there, or CANCEL to go back to where you were, untouched.</li>
           <li><b>Tester cheat — farmhouse jump:</b> on the title screen, tap the 🏆 on the right of "Bros." 5 times to jump straight to the farmhouse at the end of the level — the home-cooked meal, the +1 heart, and then on to the next level, just like finishing the field. If a run is already going, it's that level's farmhouse; if not, a fresh run starts (with your picked hero, or Corn Man) and it's Level 1's farmhouse. The first 4 taps do nothing.</li>
+          <li><b>Tester cheat — moon jump:</b> during the game, tap TIME in the stats at the top 5 times to jump straight to the moon — Cookie's level — as a fresh run with your picked hero (score, corn, lives, and power-ups all reset). Up there, collect 20 of the 25 moon rocks to open Cookie's gate, grab the 3 power-up crates so you can throw corn, and beat Cookie with 10 thrown corns — watch out, he throws cookies back. The first 4 taps do nothing.</li>
           <li><b>Corn Warp:</b> some fields hide a golden silo. Stand at its door and press ↓ to warp ahead 3 levels.</li>
           <li><b>Level 40:</b> the Corporate Combine boss. Stay Golden and pelt it with kernels — and watch out for its charges. It also <b>fires hay bales and corn at you</b>: the hay bales arc like the Barn Monster's, and its corn is a dark-red horizontal attack cob with a red glow — <b>not a pickup</b>, so don't run into it. Dodge or jump over both — touching a fired hay bale or a fired corn cob drains a chunk of energy, just like any other hit.</li>
         </ul>
@@ -585,9 +593,37 @@
       "..ddKKKK..KKKKdd..",
       ".dddKKKK..KKKKddd."
     ];
+    /* Cookie — the orange cookie monster waiting on the moon, modeled on
+       Ryan's picture of him: a black fuzzy monster with neon-green spiky
+       hair, two big white eyes with black pupils, a huge green grin, a
+       gold chain, and orange hands and feet. 20×22 at px 5 = 100×110. */
+    var COOKIE_MAP = [
+      "....v..v..vv..v.....",
+      "...vvv.vvvv.vvv.....",
+      "....vvvvvvvvvv......",
+      "...KKKKKKKKKKKKKK...",
+      "..KKKKKKKKKKKKKKKK..",
+      "..KWWWWWWKKWWWWWWK..",
+      "..KWWKWWWKKWWKWWWK..",
+      "..KWWWWWWKKWWWWWWK..",
+      "..KKWWWWWKKWWWWWKK..",
+      "...KKKKKKKKKKKKKK...",
+      "....KvvvvvvvvvvK....",
+      "...KvvvvvvvvvvvvK...",
+      "....KKvvvvvvvvKK....",
+      "....KKKKKKKKKKKK....",
+      "....KYYHYYHYYYK.....",
+      "..OOKKKKKKKKKKKKOO..",
+      "..OOKKKKKKKKKKKKOO..",
+      "...KKKKKKKKKKKKKK...",
+      "...KKKKKKKKKKKKKK...",
+      "....KKKKKKKKKKKK....",
+      "....KKKKK..KKKKK....",
+      "....OOOOO..OOOOO...."
+    ];
 
     /* ---------------- GAME STATE ---------------- */
-    var state = 'title'; // title | select | play | meal | warp | over | win | hug
+    var state = 'title'; // title | select | play | meal | warp | over | win | hug | moonwarp | cookietalk | congrats
     /* Title-screen art (the generated Super Retro Bros cover). Drawn
        letterboxed on the title screen only; ENTER GAME is a real DOM
        button over it, never painted into the art. */
@@ -603,8 +639,8 @@
        still cost the whole life at once. */
     var ENERGY_MAX = 4, energy = ENERGY_MAX;
     var level = null, player = null, camX = 0, frame = 0;
-    var kernels = [], bales = [], bossCorn = [], fireballs = [], particles = [], floaters = [], popups = [];
-    var timeLeft = 300, levelTime = 0, throwCd = 0, bossRef = null, stoneRef = null;
+    var kernels = [], bales = [], bossCorn = [], fireballs = [], cookies = [], particles = [], floaters = [], popups = [];
+    var timeLeft = 300, levelTime = 0, throwCd = 0, bossRef = null, stoneRef = null, cookieRef = null;
     var stateTimer = 0, mealBonus = 0, paused = false;
     /* Secret Level 589 hug scene: Stone's 💦 tears and the hero's
        walk-in position (screen coordinates, set by startHugScene). */
@@ -619,6 +655,10 @@
     /* Tester cheat #2: tap SCORE (title screen or in-game HUD) 5 times to open
        the level select for levels 1–40. */
     var scoreTaps = 0, lastScoreTap = 0, levelSelectPaused = false;
+    /* Tester cheat #4: tap TIME in the in-game HUD 5 times to jump
+       straight to the moon (Cookie's level) as a fresh run — the second
+       route to the moon, alongside the warp zone in secret Level 589. */
+    var timeTaps = 0, lastTimeTap = 0;
     /* Tester cheat #3: tap the right 🏆 beside "Bros." in the title art
        5 times to jump straight to the farmhouse meal scene. runActive
        tracks whether a run is underway (set in loadLevel, cleared on
@@ -650,9 +690,10 @@
     }
     window.addEventListener('error', function(e){ dbg('ERROR: ' + (e.message || 'unknown error')); });
 
-    function showBanner(html, sub, dur){
+    function showBanner(html, sub, dur, atTop){
       var b = document.getElementById('banner');
       b.innerHTML = html + (sub ? '<small>' + sub + '</small>' : '');
+      b.className = atTop ? 'start' : '';
       b.style.opacity = '1';
       bannerUntil = performance.now() + (dur || 1800);
     }
@@ -678,6 +719,7 @@
     }
     function genLevel(n){
       if (n === 589) return genSecretLevel();
+      if (n === 590) return genMoonLevel();
       var rand = mulberry32(n * 7919 + 1013);
       var isBoss = (n === 40);
       var W = isBoss ? 56 : Math.min(72 + n * 3, 175);
@@ -850,6 +892,45 @@
       t[6][8] = 3; t[6][24] = 3; t[6][40] = 3;
       return L;
     }
+    /* THE MOON — the secret level chained after 589. It has NO number a
+       player can type into the level select (that clamps to 1–40 plus
+       589): the ways here are the MOON WARP zone that appears in the
+       589 field after Stone is hugged, and the TIME ×5 tester cheat.
+       Grey cratered surface under a
+       starry sky; the only pickups are 25 moon rocks, and Cookie's gate
+       (a moon-rock pillar) stays shut until 20 are collected — the 5
+       spare rocks are the margin. Exactly 3 staged power-up crates
+       (🥾 → 🌽 → 🌽 x2), and Cookie waits past the gate at the end. */
+    function genMoonLevel(){
+      var W = 84;
+      var t = blankTiles(W);
+      var L = { n: 590, w: W, tiles: t, enemies: [], items: [], powerups: [], boss: false, monster: null,
+                moon: true, stalkCol: W + 50, warpCol: -1, th: themeForLevel(590),
+                startX: 2 * TILE, startY: GROUND_ROW * TILE - 60,
+                rocksGot: 0, gateCol: W - 16, gateOpen: false, gateMsgT: 0,
+                cookieSpawn: { x: (W - 9) * TILE, y: GROUND_ROW * TILE - 110 } };
+      fillGround(t, 0, W - 1);
+      for (var r = 0; r < ROWS; r++){ t[r][0] = 4; t[r][W - 1] = 4; }
+      function addRock(px, py){ L.items.push({ x: px, y: py, golden: false, rock: true, taken: false, fromBlock: false, vy: 0, t: Math.random() * 6 }); }
+      function addRockRow(col0, count, rowY){ for (var i = 0; i < count; i++) addRock((col0 + i) * TILE + 14, rowY * TILE + 12); }
+      // 19 moon rocks in rows along the surface…
+      addRockRow(4, 4, 8); addRockRow(11, 4, 7); addRockRow(18, 4, 8); addRockRow(27, 4, 7); addRockRow(35, 3, 8);
+      // …and 6 more floating over three low hay platforms = 25 in all
+      var plats = [22, 40, 52];
+      for (var pi = 0; pi < plats.length; pi++){
+        for (var pj = 0; pj < 3; pj++) t[6][plats[pi] + pj] = 4;
+        addRockRow(plats[pi], 2, 5);
+      }
+      // exactly 3 staged power-up crates at crate height over solid
+      // ground, bumpable from underneath, clear of the platforms
+      t[6][8] = 3; t[6][30] = 3; t[6][48] = 3;
+      // Cookie's gate: a pillar of moon rock (ground tiles — solid, and
+      // unlike brick they can't be smashed through, even while Golden)
+      // from row 3 down to the surface. Far too tall to jump, from the
+      // floor or from any platform near it.
+      for (var gr = 3; gr < GROUND_ROW; gr++) t[gr][L.gateCol] = 1;
+      return L;
+    }
     function tileAt(tx, ty){
       if (ty < 0) return 0;
       if (ty >= ROWS) return 0;
@@ -863,24 +944,30 @@
       level = genLevel(n);
       player = newPlayer(level.startX, level.startY);
       lastSafe = { x: level.startX, y: level.startY };
-      kernels = []; bales = []; bossCorn = []; fireballs = []; particles = []; floaters = []; popups = [];
+      kernels = []; bales = []; bossCorn = []; fireballs = []; cookies = []; particles = []; floaters = []; popups = [];
       camX = 0; timeLeft = 300; levelTime = 0; throwCd = 0;
-      bossRef = null; stoneRef = null;
+      bossRef = null; stoneRef = null; cookieRef = null;
       if (level.boss){
         bossRef = { x: level.bossSpawn.x, y: level.bossSpawn.y, w: 252, h: 148, vx: 0, vy: 0,
                     hp: 24, maxhp: 24, dir: -1, mode: 'stalk', modeT: 0, flash: 0, dead: false,
                     deadT: 0, wheelT: 0, goldT: 4, baleT: 140, cornT: 80 };
-        showBanner('LEVEL 40', 'THE CORPORATE COMBINE!', 2400);
+        showBanner('LEVEL 40', 'THE CORPORATE COMBINE!', 2400, true);
         sfx('charge');
         dbg('Corporate Combine boss — it fires hay bales and enemy corn at the player (both hurt / drain energy; the fired corn is an attack, not a pickup)');
       } else if (level.secret){
         stoneRef = { x: level.stoneSpawn.x, y: level.stoneSpawn.y, w: 90, h: 110, vx: 0, vy: 0,
                      hp: 10, maxhp: 10, dir: -1, flash: 0, dead: false, fireT: 120,
                      homeX: level.stoneSpawn.x, onGround: false, hitWall: false };
-        showBanner('SECRET LEVEL 589', 'A field of XRP coins…', 2400);
+        showBanner('SECRET LEVEL 589', 'A field of XRP coins…', 2400, true);
         dbg('SECRET LEVEL 589 — XRP coins only, 3 power-up crates, and Stone waits at the end (10 thrown-corn hits; he fires #00ff00 fireballs)');
+      } else if (level.moon){
+        cookieRef = { x: level.cookieSpawn.x, y: level.cookieSpawn.y, w: 100, h: 110, vx: 0, vy: 0,
+                      hp: 10, maxhp: 10, dir: -1, flash: 0, dead: false, throwT: 150,
+                      homeX: level.cookieSpawn.x, onGround: false, hitWall: false };
+        showBanner('THE MOON', 'Collect 20 MOON ROCKS to reach COOKIE!', 2600, true);
+        dbg('THE MOON (secret — moon warp or TIME×5 cheat only) — 25 moon rocks, 20 open Cookie\'s gate; 3 power-up crates; Cookie waits at the end (10 thrown-corn hits; he throws cookies)');
       } else {
-        showBanner('LEVEL ' + n, n === 1 ? 'Grab the corn — reach the big ear!' : level.th.name, 1700);
+        showBanner('LEVEL ' + n, n === 1 ? 'Grab the corn — reach the big ear!' : level.th.name, 1700, true);
       }
       if (level.monster) dbg('Barn Monster guarding level ' + n + ' — 10 thrown-corn hits to beat, or jump over it');
       var puCount = 0;
@@ -1030,6 +1117,29 @@
 
     function collectCorn(it){
       it.taken = true;
+      if (it.rock){
+        // Moon rocks (the moon level's only pickups): +100 each, and
+        // they count toward the 20 that open Cookie's gate. The gate
+        // pillar crumbles the moment the 20th rock is picked up.
+        level.rocksGot++;
+        score += 100;
+        sfx('corn');
+        burst(it.x + 10, it.y + 12, ['#c9c9d2', '#ffffff', '#8a8a96'], 8, 2.4);
+        if (level.rocksGot >= 20 && !level.gateOpen){
+          level.gateOpen = true;
+          for (var gr2 = 3; gr2 < GROUND_ROW; gr2++) level.tiles[gr2][level.gateCol] = 0;
+          burst(level.gateCol * TILE + 24, GROUND_ROW * TILE - 120, ['#c9c9d2', '#ffffff', '#9a9aa2', '#ffd83d'], 34, 4.5);
+          sfx('gold');
+          showBanner('THE GATE IS OPEN!', 'COOKIE waits beyond…', 2200);
+          addPopup(it.x - 8, it.y - 22, '20 ROCKS! GATE OPEN!', '#ffd83d');
+          dbg('20 moon rocks — Cookie\'s gate crumbled open');
+        } else {
+          addPopup(it.x - 8, it.y - 22, 'MOON ROCK ' + level.rocksGot + '/20', '#e8e8f2');
+          dbg('Moon rock collected — ' + level.rocksGot + ' of 25 (20 open Cookie\'s gate)');
+        }
+        updateHUD();
+        return;
+      }
       if (it.xrp){
         // Secret Level 589's XRP coins: they score like a corn pickup
         // (+100) and count toward the corn total / 100-corn extra life,
@@ -1109,6 +1219,13 @@
       }
       pressed.down = false;
 
+      // the MOON WARP zone (secret Level 589 only — it appears in the
+      // field after Stone is hugged): just walking into it blasts off
+      if (level.moonWarp && !level.moonWarp.used && overlap(p, level.moonWarp)){
+        enterMoonWarpZone();
+        return;
+      }
+
       // throw corn (🌽 thrower, 🌽 x2, or while Golden)
       if (throwCd > 0) throwCd--;
       if (pressed.throw){
@@ -1138,7 +1255,7 @@
       // fell in a pit
       if (p.y > ROWS * TILE + 60){ loseLife('pit'); return; }
       // level goal: the big ear on the stalk
-      if (!level.boss && !level.secret && p.x + p.w >= level.stalkCol * TILE + 8){
+      if (!level.boss && !level.secret && !level.moon && p.x + p.w >= level.stalkCol * TILE + 8){
         finishLevel();
       }
     }
@@ -1282,6 +1399,28 @@
             startHugScene();
           } else {
             addPopup(k.x - 16, k.y - 22, 'HIT! ' + st.hp + ' LEFT', '#00ff00');
+            sfx('bosshit');
+          }
+          updateHUD();
+        }
+        if (!dead && cookieRef && !cookieRef.dead && overlap(kb, cookieRef)){
+          // Cookie (the moon boss): every thrown kernel counts as one
+          // hit — the 🌽 x2 second kernel counts separately, like Stone
+          // and the Barn Monster. 10 hits beat him.
+          var ck = cookieRef;
+          ck.hp--; ck.flash = 8;
+          burst(k.x, k.y, ['#ff8a2f', '#ffd83d', '#d9a05a'], 8, 2.6);
+          dead = true;
+          if (ck.hp <= 0){
+            ck.dead = true;
+            score += 2000;
+            addPopup(ck.x - 4, ck.y - 26, 'COOKIE DOWN! +2000', '#ff8a2f');
+            burst(ck.x + ck.w / 2, ck.y + ck.h / 2, ['#ff8a2f', '#ffd83d', '#d9a05a', '#fff'], 30, 4.5);
+            sfx('boom');
+            dbg('Cookie DEFEATED on the moon — +2000, score ' + score);
+            startCookieTalk();
+          } else {
+            addPopup(k.x - 16, k.y - 22, 'HIT! ' + ck.hp + ' LEFT', '#ff8a2f');
             sfx('bosshit');
           }
           updateHUD();
@@ -1513,16 +1652,140 @@
       }
     }
 
+    /* Cookie — the orange cookie monster at the end of the moon. He
+       paces a short post beyond his gate, faces the player, and throws
+       cookies on a timer once the player is in range. Touching him
+       hurts like any enemy, but he never blocks the way. */
+    function updateCookie(){
+      var c = cookieRef;
+      if (!c || c.dead) return;
+      if (c.flash > 0) c.flash--;
+      var pcx = player.x + player.w / 2, ccx = c.x + c.w / 2;
+      c.dir = pcx < ccx ? -1 : 1;
+      var want = clamp(pcx, c.homeX + c.w / 2 - 70, c.homeX + c.w / 2 + 70);
+      var dx = want - ccx;
+      c.vx = Math.abs(dx) < 6 ? 0 : clamp(dx * 0.02, -0.6, 0.6);
+      c.vy = Math.min(c.vy + 0.55, 14);
+      c.hitWall = false;
+      collideMove(c, false);
+      // thrown cookies: aimed at the player's height with a slight arc
+      if (c.throwT > 0) c.throwT--;
+      if (c.throwT <= 0 && Math.abs(pcx - ccx) < 900){
+        c.throwT = 130 + Math.floor(Math.random() * 45);
+        var tdir = pcx < ccx ? -1 : 1;
+        var tx = ccx + tdir * (c.w / 2 + 8), ty = c.y + 40;
+        var pcy = player.y + player.h / 2;
+        var tvy = clamp((pcy - ty) * 0.012, -2.8, 1.0);
+        cookies.push({ x: tx, y: ty, vx: tdir * 5.4, vy: tvy, t: 0, dir: tdir });
+        sfx('throw');
+      }
+      if (overlap(player, c)) hurtPlayer(ccx);
+    }
+
+    /* Cookie's thrown cookies: spinning, with a gentle arc. Touching
+       one hurts exactly like a hay bale — one energy chunk, Golden
+       absorbs it free. */
+    function updateCookies(){
+      for (var i = cookies.length - 1; i >= 0; i--){
+        var cm = cookies[i];
+        cm.t++; cm.x += cm.vx; cm.vy = Math.min(cm.vy + 0.10, 6); cm.y += cm.vy;
+        var dead = cm.t > 220 || cm.y > ROWS * TILE || cm.x < -80 || (level && cm.x > level.w * TILE + 80);
+        if (!dead && isSolid(tileAt(Math.floor(cm.x / TILE), Math.floor(cm.y / TILE)))) dead = true;
+        if (!dead && overlap(player, { x: cm.x - 12, y: cm.y - 12, w: 24, h: 24 })){
+          hurtPlayer(cm.x);
+          burst(cm.x, cm.y, ['#d9a05a', '#5b3a1e', '#ff8a2f'], 8, 2.6);
+          cookies.splice(i, 1);
+          if (state !== 'play') return;
+          continue;
+        }
+        if (dead){
+          burst(cm.x, cm.y, ['#d9a05a', '#5b3a1e'], 5, 2);
+          cookies.splice(i, 1);
+        }
+      }
+    }
+
+    /* Cookie's gate: while it stands, a player who walks up to it is
+       told plainly that 20 moon rocks are needed first (repeating at
+       most every few seconds while they linger there). */
+    function updateMoonGate(){
+      if (level.gateMsgT > 0) level.gateMsgT--;
+      var gateX = level.gateCol * TILE;
+      if (level.gateMsgT <= 0 && player.x < gateX && Math.abs((player.x + player.w) - gateX) < 90){
+        level.gateMsgT = 320;
+        showBanner('COOKIE IS BEYOND THE GATE', 'Collect 20 MOON ROCKS first — you have ' + level.rocksGot, 1900);
+        dbg('At Cookie\'s gate with only ' + level.rocksGot + ' moon rocks — 20 needed');
+      }
+    }
+
     /* Stone is beaten — no farmhouse, no win finale. He starts crying,
        and the hug scene takes over: the hero walks in, hugs him, and
-       tells him everything is going to be all right. After the scene
-       the run ends back at the title screen, score kept like any run
-       end — there is no Level 590. */
+       tells him everything is going to be all right. When the scene
+       ends, a MOON WARP zone appears in the field (see revealMoonWarp)
+       — the chain continues to the moon instead of ending here. */
     function startHugScene(){
       state = 'hug'; stateTimer = 0; runActive = false;
       hugTears = []; hugHeroX = 90;
       musicStop(); sfx('gold');
       dbg('Stone is crying — the hero goes to hug him');
+    }
+
+    /* The hug is over — and a MOON WARP zone shimmers into existence in
+       the 589 field, right where Stone stood. Play resumes in the same
+       field with a fresh clock; walking into the portal blasts off to
+       the moon level (the TIME ×5 cheat is the other route there). */
+    function revealMoonWarp(){
+      state = 'play'; stateTimer = 0; runActive = true;
+      levelTime = 0; timeLeft = 300;
+      kernels = []; fireballs = [];
+      level.moonWarp = { x: stoneRef.x - 6, y: GROUND_ROW * TILE - 156, w: 102, h: 156, used: false };
+      player.x = stoneRef.x - 300; player.y = GROUND_ROW * TILE - 60;
+      player.vx = 0; player.vy = 0;
+      lastSafe = { x: player.x, y: player.y };
+      camX = clamp(player.x + player.w / 2 - VW * 0.42, 0, Math.max(0, level.w * TILE - VW));
+      showBanner('A WARP ZONE APPEARED!', 'Walk into the MOON WARP to blast off!', 2600);
+      sfx('warp');
+      if (AC && soundOn) musicStart();
+      updateHUD();
+      dbg('The hug is done — a MOON WARP zone appeared in the secret field');
+    }
+
+    /* Stepping into the moon warp: a short blast-off scene, then the
+       moon level loads with the run (score, corn, lives, power-ups)
+       carried over. */
+    function enterMoonWarpZone(){
+      level.moonWarp.used = true;
+      state = 'moonwarp'; stateTimer = 0;
+      sfx('warp'); musicStop();
+      dbg('MOON WARP entered — blasting off to the moon!');
+    }
+
+    /* Cookie is beaten. No farmhouse, no win finale — a two-line
+       exchange on the moon: Cookie's line first, then the hero's. */
+    function startCookieTalk(){
+      state = 'cookietalk'; stateTimer = 0; runActive = false;
+      cookies = []; kernels = [];
+      musicStop(); sfx('gold');
+      dbg('Cookie is beaten — he has something to say…');
+    }
+    function advanceCookieTalk(){
+      if (stateTimer < 210){ if (stateTimer > 50) stateTimer = 210; }
+      else if (stateTimer > 280) enterCongrats();
+    }
+    /* The whole secret chain is done — Stone hugged in 589, Cookie
+       beaten on the moon. A big congrats screen, and its START OVER
+       button goes back to the hero-pick screen (not the title). */
+    function enterCongrats(){
+      state = 'congrats'; stateTimer = 0;
+      sfx('win');
+      dbg('★ SECRET CHAIN COMPLETE — Stone hugged in Level 589, Cookie beaten on the moon. Score ' + score);
+    }
+    function startOverToSelect(){
+      dbg('START OVER — back to the hero-pick screen (secret chain finished, score ' + score + ')');
+      state = 'select'; paused = false;
+      audioInit();
+      if (AC && soundOn) musicStart();
+      syncChrome();
     }
 
     function updateFx(){
@@ -1560,10 +1823,13 @@
               if (state === 'play') updateBossCorn();
               if (state === 'play' && level.secret) updateStone();
               if (state === 'play' && level.secret) updateFireballs();
+              if (state === 'play' && level.moon) updateCookie();
+              if (state === 'play' && level.moon) updateCookies();
             }
           }
         }
         updateFx();
+        if (state === 'play' && level.moon && !level.gateOpen) updateMoonGate();
         var target = clamp(player.x + player.w / 2 - VW * 0.42, 0, Math.max(0, level.w * TILE - VW));
         camX += (target - camX) * 0.18;
         if (Math.abs(target - camX) < 0.6) camX = target;
@@ -1578,6 +1844,22 @@
           loadLevel(dest, true);
           showBanner('CORN WARP!', 'Skipped ahead to Level ' + dest + '  ·  +250', 2000);
         }
+      }
+      else if (state === 'moonwarp'){
+        stateTimer++;
+        if (stateTimer === 70){
+          dbg('Moon warp: the secret field → the moon (run carried over)');
+          loadLevel(590, true);
+        }
+      }
+      else if (state === 'cookietalk'){
+        stateTimer++;
+        if (stateTimer > 470) enterCongrats();
+        updateFx();
+      }
+      else if (state === 'congrats'){
+        stateTimer++;
+        updateFx();
       }
       else if (state === 'hug'){
         stateTimer++;
@@ -1607,7 +1889,7 @@
     function updateHUD(){
       elScore.textContent = score;
       elCorn.textContent = cornTotal;
-      elLevel.textContent = levelNum;
+      elLevel.textContent = (level && level.moon) ? 'MOON' : levelNum;
       elTime.textContent = Math.ceil(timeLeft);
       elTime.style.color = timeLeft < 30 ? '#ff8a7a' : '';
       var hearts = '';
@@ -1619,7 +1901,7 @@
       elEnergy.style.color = energy >= 3 ? '#7ddb6a' : (energy === 2 ? '#ffd83d' : '#ff8a5c');
       elPower.style.display = (player && player.power) ? 'inline' : 'none';
       elCheat.style.display = cheatInvincible ? 'inline' : 'none';
-      elPowers.textContent = (pFast ? '🥾' : '') + (pDouble ? '🌽x2' : (pThrow ? '🌽' : ''));
+      elPowers.textContent = (pFast ? '🥾' : '') + (pDouble ? '🌽x2' : (pThrow ? '🌽' : '')) + ((level && level.moon) ? ' 🌑' + level.rocksGot + '/20' : '');
     }
     function selectHero(i){
       heroIdx = i;
@@ -1694,7 +1976,8 @@
     function confirmAdvance(){
       audioInit();
       if (state === 'meal' && stateTimer > 40) advanceMeal();
-      else if (state === 'hug' && stateTimer > 160) toTitle();
+      else if (state === 'hug' && stateTimer > 160) revealMoonWarp();
+      else if (state === 'cookietalk') advanceCookieTalk();
       else if ((state === 'over' || state === 'win') && stateTimer > 45) toTitle();
       else if (state === 'title') enterSelect();
       else if (state === 'select') startGame();
@@ -1799,6 +2082,32 @@
         if (menuOverlay.classList.contains('hidden')) openLevelSelect();
       }
     });
+    /* ---- TIME ×5 moon cheat ----
+       Taps 1–4 do nothing; the 5th starts a fresh run on the moon
+       with the picked hero: score, corn, lives, and power-ups reset,
+       and the freshly generated moon level resets the rock count, so
+       the 20-of-25 gate and the 3 staged crates work exactly as they
+       do on the warp route from Level 589. */
+    function cheatToMoon(){
+      closeLevelSelect(false);
+      dbg('CHEAT: moon jump (TIME tapped 5×) — fresh run on the moon, hero ' + HEROES[heroIdx].name);
+      score = 0; cornTotal = 0; lives = 3; energy = ENERGY_MAX; superTaps = 0; trophyTaps = 0;
+      pFast = false; pThrow = false; pDouble = false;
+      loadLevel(590, false);
+      if (AC && soundOn) beep(880, 0.09, 'square', 0.1);
+    }
+    document.getElementById('hudTimeCell').addEventListener('pointerdown', function(e){
+      e.preventDefault();
+      audioInit();
+      var now = performance.now();
+      if (now - lastTimeTap > 4000) timeTaps = 0;
+      lastTimeTap = now;
+      timeTaps++;
+      if (timeTaps >= 5){
+        timeTaps = 0;
+        if (menuOverlay.classList.contains('hidden')) cheatToMoon();
+      }
+    });
     bindTouch('tLeft', 'left'); bindTouch('tRight', 'right'); bindTouch('tDown', 'down');
     bindTouch('tJump', 'jump'); bindTouch('tThrow', 'throw');
     /* ---- Right-🏆 ×5 farmhouse cheat ----
@@ -1871,12 +2180,20 @@
         }
         return;
       }
+      if (state === 'congrats'){
+        // the congrats screen's START OVER button is a real tap target
+        // (drawn in drawCongrats) — taps anywhere else here do nothing
+        if (stateTimer > 20 && mx >= VW / 2 - 150 && mx <= VW / 2 + 150 && my >= 448 && my <= 504) startOverToSelect();
+        return;
+      }
       confirmAdvance();
     });
     // touch A/B also advance the meal / end screens
     setInterval(function(){
       if (state === 'meal' && stateTimer > 40 && (pressed.jump || pressed.throw)){ pressed.jump = pressed.throw = false; advanceMeal(); }
-      else if (state === 'hug' && stateTimer > 160 && (pressed.jump || pressed.throw)){ pressed.jump = pressed.throw = false; toTitle(); }
+      else if (state === 'hug' && stateTimer > 160 && (pressed.jump || pressed.throw)){ pressed.jump = pressed.throw = false; revealMoonWarp(); }
+      else if (state === 'cookietalk' && (pressed.jump || pressed.throw)){ pressed.jump = pressed.throw = false; advanceCookieTalk(); }
+      else if (state === 'congrats' && stateTimer > 30 && (pressed.jump || pressed.throw)){ pressed.jump = pressed.throw = false; startOverToSelect(); }
       else if ((state === 'over' || state === 'win') && stateTimer > 45 && (pressed.jump || pressed.throw)){ pressed.jump = pressed.throw = false; toTitle(); }
       else if (state === 'title' && pressed.jump){ pressed.jump = false; enterSelect(); }
       else if (state === 'select' && pressed.jump){ pressed.jump = false; startGame(); }
@@ -1929,6 +2246,20 @@
       ctx.fillStyle = '#fff';
       ctx.fillRect(cxp - 9, cyp - 10, 4, 4);
       text('XRP', cxp, cyp - 4, 7.5, '#7a5b12', 'center');
+    }
+    function drawMoonRock(x, y){
+      // a chunk of grey moon rock — the moon level's only pickup
+      ctx.fillStyle = '#8a8a96';
+      ctx.fillRect(x + 2, y + 8, 16, 12);
+      ctx.fillRect(x + 5, y + 4, 10, 6);
+      ctx.fillRect(x, y + 12, 20, 6);
+      ctx.fillStyle = '#c9c9d2';
+      ctx.fillRect(x + 5, y + 6, 6, 4);
+      ctx.fillRect(x + 3, y + 11, 5, 4);
+      ctx.fillStyle = '#5c5c66';
+      ctx.fillRect(x + 12, y + 13, 5, 4);
+      ctx.fillRect(x + 6, y + 17, 4, 3);
+      if ((frame >> 3) % 2 === 0){ ctx.fillStyle = '#ffffff'; ctx.fillRect(x + 15, y + 1, 2, 2); }
     }
     function drawPowerupIcon(kind, x, y){
       // the staged power-ups, drawn exactly as their symbols: 🥾 / 🌽 / 🌽 x2
@@ -2076,8 +2407,13 @@
     /* Secret Level 589's own look: a dark night field lit in Stone's
        black and #00ff00 (bright green crop tufts, green-tinted bricks). */
     var STONE_THEME = { name:'THE SECRET FIELD', skyTop:'#071a0e', skyBot:'#14532a', hillFar:'#0e2f1a', hillNear:'#0a2413', body:'moon', bodyC:'#eaffea', bodyC2:'#b8e6c0', cloud:'rgba(0,60,20,0.55)', stars:true, grass:'#1e7a38', grassHi:'#2fae4e', dirt:'#3a2c1c', dirtDark:'#2a1f12', tuft:'#00ff00', brick:'#2e4a34', brickEdge:'#203626', stalk:'#2fae4e', barn:'#12351c', leaf:'#14532a', decor:'tower', fence:'stone' };
+    /* The moon's own look: black starry sky with the Earth hanging in
+       it, and a grey cratered surface — ground tiles, bricks, and the
+       gate pillar all render in shades of moon grey. */
+    var MOON_THEME = { name:'THE MOON', skyTop:'#04040c', skyBot:'#16162a', hillFar:'#33333f', hillNear:'#26262f', body:'moon', bodyC:'#bfe8ff', bodyC2:'#7fb6dd', cloud:'rgba(10,10,20,0)', stars:true, grass:'#9a9aa2', grassHi:'#c9c9d2', dirt:'#63636e', dirtDark:'#3a3a44', tuft:null, brick:'#7d7d88', brickEdge:'#5a5a64', stalk:'#9a9aa2', barn:'#55555f', leaf:'#55555f', decor:null, fence:'stone' };
     function themeForLevel(n){
       if (n === 589) return STONE_THEME;
+      if (n === 590) return MOON_THEME;
       if (n === 40) return BOSS_THEME;
       var base = LEVEL_THEMES[(n - 1) % LEVEL_THEMES.length];
       var th = {};
@@ -2325,7 +2661,7 @@
       }
     }
     function drawStalk(){
-      if (level.boss || level.secret) return;
+      if (level.boss || level.secret || level.moon) return;
       var x = level.stalkCol * TILE - camX + 19;
       if (x < -80 || x > VW + 80) return;
       var GY = GROUND_ROW * TILE, topY = 1 * TILE;
@@ -2351,6 +2687,52 @@
       drawSilo();
       drawFenceAndTiles();
       drawStalk();
+      // moon craters: dark hollows pocked into the surface
+      if (level.moon){
+        var GY0 = GROUND_ROW * TILE;
+        ctx.fillStyle = 'rgba(20,20,28,0.35)';
+        for (var crI = 0; crI < 6; crI++){
+          var crX = (6 + crI * 13) * TILE - camX;
+          if (crX < -120 || crX > VW + 60) continue;
+          ctx.fillRect(crX, GY0 + 22 + (crI % 2) * 14, 64, 9);
+          ctx.fillRect(crX + 10, GY0 + 18 + (crI % 2) * 14, 44, 5);
+        }
+      }
+      // Cookie's gate, while it stands: a floating label over the
+      // pillar saying who is beyond it and how many rocks it takes
+      if (level.moon && !level.gateOpen){
+        var gtX = level.gateCol * TILE - camX + 24;
+        if (gtX > -60 && gtX < VW + 60){
+          text('🔒 COOKIE', gtX, 104, 10, '#ff8a2f', 'center', 'rgba(0,0,0,0.55)');
+          text(level.rocksGot + ' / 20 🌑 NEEDED', gtX, 126, 9, '#fff', 'center', 'rgba(0,0,0,0.55)');
+        }
+      }
+      // the MOON WARP zone in the 589 field, once the hug reveals it:
+      // a tall shimmering portal with a label and a walk-in prompt
+      if (level.moonWarp && !level.moonWarp.used){
+        var wp2 = level.moonWarp, wx2 = Math.round(wp2.x - camX);
+        if (wx2 > -180 && wx2 < VW + 180){
+          var wob = Math.sin(frame * 0.1) * 3;
+          ctx.fillStyle = 'rgba(0,255,170,0.15)';
+          ctx.fillRect(wx2 - 9, wp2.y - 8 + wob, wp2.w + 18, wp2.h + 8);
+          ctx.fillStyle = '#07332a';
+          ctx.fillRect(wx2, wp2.y + wob, wp2.w, wp2.h);
+          ctx.fillStyle = (frame >> 2) % 2 === 0 ? '#0ea968' : '#12b76a';
+          var inset = 8 + ((frame >> 2) % 3) * 5;
+          ctx.fillRect(wx2 + inset, wp2.y + inset + wob, wp2.w - inset * 2, wp2.h - inset * 2);
+          ctx.fillStyle = '#eafff5';
+          ctx.fillRect(wx2 + wp2.w / 2 - 7, wp2.y + wp2.h / 2 - 26 + wob, 14, 52);
+          ctx.fillStyle = '#ffffff';
+          for (var spI = 0; spI < 4; spI++){
+            var spX = wx2 + 12 + hash2(spI, 7) * (wp2.w - 24), spY = wp2.y + 14 + ((frame * 1.4 + spI * 37) % (wp2.h - 28));
+            ctx.fillRect(spX, spY, 3, 3);
+          }
+          text('MOON WARP', wx2 + wp2.w / 2, wp2.y - 58, 12, '#7dffce', 'center', 'rgba(0,0,0,0.55)');
+          text('🌙 TO THE MOON!', wx2 + wp2.w / 2, wp2.y - 34, 9, '#fff', 'center', 'rgba(0,0,0,0.55)');
+          if (player && Math.abs((player.x + player.w / 2) - (wp2.x + wp2.w / 2)) < 210 && state === 'play')
+            text('WALK IN ▸', wx2 + wp2.w / 2, wp2.y + wp2.h + 12, 9.5, '#ffd83d', 'center', 'rgba(0,0,0,0.55)');
+        }
+      }
       // items
       for (var i = 0; i < level.items.length; i++){
         var it = level.items[i];
@@ -2359,6 +2741,7 @@
         if (ix < -40 || ix > VW + 40) continue;
         var iy = it.fromBlock ? it.y : it.y + Math.sin(it.t) * 3;
         if (it.xrp) drawXrpCoin(ix, iy);
+        else if (it.rock) drawMoonRock(ix, iy);
         else drawCornEar(ix, iy, 1, it.golden, it.t + frame * 0.016);
       }
       // power-ups sitting on top of their crate, waiting to be picked up
@@ -2422,6 +2805,24 @@
             ctx.fillRect(sx4 + st2.w / 2 - sBarW / 2 + sSg * (sSegW + 2), sy4 - 21, sSegW, 8);
           }
           text(st2.hp + ' HITS LEFT', sx4 + st2.w / 2, sy4 - 58, 8, '#00ff00', 'center', 'rgba(0,0,0,0.55)');
+        }
+      }
+      // Cookie (the moon boss), with his name and hits-left bar overhead
+      if (cookieRef && !cookieRef.dead){
+        var ck3 = cookieRef, cx5 = Math.round(ck3.x - camX), cy5 = Math.round(ck3.y);
+        if (cx5 > -170 && cx5 < VW + 170){
+          drawMap(COOKIE_MAP, cx5, cy5, 5, ck3.dir > 0);
+          if (ck3.flash > 0 && (frame >> 1) % 2 === 0){
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.fillRect(cx5, cy5, ck3.w, ck3.h);
+          }
+          text('COOKIE', cx5 + ck3.w / 2, cy5 - 36, 10, '#ff8a2f', 'center', 'rgba(0,0,0,0.55)');
+          var cSegW = 9, cBarW = ck3.maxhp * cSegW + (ck3.maxhp - 1) * 2;
+          for (var cSg = 0; cSg < ck3.maxhp; cSg++){
+            ctx.fillStyle = cSg < ck3.hp ? '#ff8a2f' : 'rgba(16,16,16,0.65)';
+            ctx.fillRect(cx5 + ck3.w / 2 - cBarW / 2 + cSg * (cSegW + 2), cy5 - 21, cSegW, 8);
+          }
+          text(ck3.hp + ' HITS LEFT', cx5 + ck3.w / 2, cy5 - 58, 8, '#ff8a2f', 'center', 'rgba(0,0,0,0.55)');
         }
       }
       // boss
@@ -2497,6 +2898,22 @@
         ctx.fillRect(fx3 - 7, fy3 - 12, 14, 24);
         ctx.fillStyle = '#eaffea';
         ctx.fillRect(fx3 - 3, fy3 - 3, 6, 6);
+      }
+      // cookies thrown by Cookie (the moon boss) — spinning tan discs
+      // with dark chips, nothing like a collectible
+      for (var ckI = 0; ckI < cookies.length; ckI++){
+        var cm2 = cookies[ckI], cmx = Math.round(cm2.x - camX), cmy = Math.round(cm2.y);
+        if (cmx < -50 || cmx > VW + 50) continue;
+        ctx.save();
+        ctx.translate(cmx, cmy);
+        ctx.rotate(cm2.t * 0.16 * (cm2.dir || 1));
+        ctx.fillStyle = '#b57e35';
+        ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#d9a05a';
+        ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#5b3a1e';
+        ctx.fillRect(-6, -5, 4, 4); ctx.fillRect(3, -2, 4, 4); ctx.fillRect(-2, 4, 4, 4); ctx.fillRect(-7, 2, 3, 3);
+        ctx.restore();
       }
       // player
       if (player && !(player.invuln > 0 && (frame >> 2) % 2 === 0)){
@@ -2696,6 +3113,88 @@
       }
       if (stateTimer > 200) text('ENTER / TAP ▸', VW / 2, VH - 30, 10.5, '#ffd83d', 'center');
     }
+    function drawMoonWarp(){
+      // blasting off through the moon warp: a starfield, a pale moon,
+      // and moon rocks tumbling past the floating hero
+      ctx.fillStyle = '#05050f'; ctx.fillRect(0, 0, VW, VH);
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      for (var sI = 0; sI < 60; sI++){
+        var stx = hash2(sI, 3) * VW, sty = (hash2(sI, 9) * VH + frame * (1 + (sI % 3))) % VH;
+        ctx.fillRect(stx, sty, (sI % 4 === 0) ? 3 : 2, (sI % 4 === 0) ? 3 : 2);
+      }
+      ctx.fillStyle = '#e8e8f2'; ctx.fillRect(VW - 190, 48, 56, 56);
+      ctx.fillStyle = '#c9c9d2'; ctx.fillRect(VW - 176, 62, 12, 12); ctx.fillRect(VW - 152, 84, 9, 9);
+      for (var rI = 0; rI < 5; rI++){
+        var ra = frame * 0.04 + rI * (Math.PI * 2 / 5);
+        var rRad = 100 + (rI % 2) * 56;
+        drawMoonRock(VW / 2 + Math.cos(ra) * rRad - 10, VH / 2 + Math.sin(ra) * rRad * 0.7 - 12);
+      }
+      text('MOON WARP!', VW / 2, VH / 2 - 66, 30, '#e8e8f2', 'center', '#3a3a54');
+      text('Blasting off to the moon...', VW / 2, VH / 2 + 44, 12, '#fff', 'center');
+      drawHeroSprite(heroIdx, VW / 2 - 24, VH / 2 - 30 + Math.sin(frame * 0.1) * 5, 3, 1, 'jump', true);
+    }
+    function drawCookieTalk(){
+      // Cookie is beaten: the two-line exchange on the moon's surface.
+      // His line first, then the hero's.
+      var th = level.th, GY = GROUND_ROW * TILE;
+      drawBackground(th);
+      ctx.fillStyle = th.grass; ctx.fillRect(0, GY, VW, 13);
+      ctx.fillStyle = th.grassHi; ctx.fillRect(0, GY, VW, 5);
+      ctx.fillStyle = th.dirt; ctx.fillRect(0, GY + 13, VW, VH - GY - 13);
+      var ckX = VW / 2 + 56;
+      drawMap(COOKIE_MAP, ckX, GY - 110, 5, false);
+      text('COOKIE', ckX + 50, GY - 136, 10, '#ff8a2f', 'center', 'rgba(0,0,0,0.55)');
+      drawHeroSprite(heroIdx, VW / 2 - 128, GY - 96, 4, 1, 'stand', false);
+      if (stateTimer < 210){
+        ctx.fillStyle = 'rgba(10,16,6,0.85)';
+        ctx.fillRect(VW / 2 - 310, 82, 620, 68);
+        ctx.strokeStyle = '#ff8a2f'; ctx.lineWidth = 2;
+        ctx.strokeRect(VW / 2 - 310, 82, 620, 68);
+        text('COOKIE:', VW / 2, 94, 9.5, '#ff8a2f', 'center');
+        text('You broke my farm, dang it!', VW / 2, 114, 15, '#fff', 'center');
+      } else {
+        ctx.fillStyle = 'rgba(10,16,6,0.85)';
+        ctx.fillRect(VW / 2 - 310, 82, 620, 68);
+        ctx.strokeStyle = '#7ddb6a'; ctx.lineWidth = 2;
+        ctx.strokeRect(VW / 2 - 310, 82, 620, 68);
+        text(HEROES[heroIdx].name + ':', VW / 2, 94, 9.5, '#7ddb6a', 'center');
+        text('West Ham who…?', VW / 2, 114, 15, '#fff', 'center');
+      }
+      if (stateTimer > 300) text('ENTER / TAP ▸', VW / 2, VH - 30, 10.5, '#ffd83d', 'center');
+    }
+    function drawCongrats(){
+      // the secret chain is complete: Stone hugged in Level 589 and
+      // Cookie beaten on the moon. The party stands on the moon's
+      // surface under a big message — and a real START OVER button
+      // (its tap target lives in the canvas pointer handler) that goes
+      // back to the hero-pick screen.
+      var th = level.th, GY = GROUND_ROW * TILE;
+      drawBackground(th);
+      ctx.fillStyle = th.grass; ctx.fillRect(0, GY, VW, 13);
+      ctx.fillStyle = th.grassHi; ctx.fillRect(0, GY, VW, 5);
+      ctx.fillStyle = th.dirt; ctx.fillRect(0, GY + 13, VW, VH - GY - 13);
+      text('★ SECRET CHAIN COMPLETE! ★', VW / 2, 88, 25, '#ffd83d', 'center', 'rgba(0,0,0,0.6)');
+      text('You hugged STONE in Secret Level 589, rode the MOON WARP,', VW / 2, 146, 12, '#fff', 'center', 'rgba(0,0,0,0.5)');
+      text('collected the moon rocks, and beat COOKIE on the moon!', VW / 2, 170, 12, '#fff', 'center', 'rgba(0,0,0,0.5)');
+      text('FINAL SCORE ' + score, VW / 2, 210, 16, '#7ddb6a', 'center', 'rgba(0,0,0,0.5)');
+      text('🌽 × ' + cornTotal + ' corn on the run', VW / 2, 240, 11, '#fff', 'center', 'rgba(0,0,0,0.5)');
+      // the victory party, feet on the moon's surface
+      drawHeroSprite(heroIdx, VW / 2 - 218, GY - 96, 4, 1, 'stand', false);
+      drawMap(STONE_MAP, VW / 2 - 118, GY - 88, 4, false);
+      drawMap(COOKIE_MAP, VW / 2 - 6, GY - 88, 4, false);
+      drawHeroSprite(1 - heroIdx, VW / 2 + 122, GY - 96, 4, -1, 'stand', false);
+      text('♥', VW / 2 - 76, GY - 118 + Math.sin(frame * 0.08) * 3, 14, '#ff8a7a', 'center');
+      text('★', VW / 2 + 32, GY - 118 + Math.sin(frame * 0.08 + 2) * 3, 14, '#ffd83d', 'center');
+      // START OVER button — a real, tappable button (see the canvas
+      // pointer handler for its tap target)
+      var bx = VW / 2 - 150, by = 448, bw = 300, bh = 56;
+      ctx.fillStyle = '#2e7d32'; ctx.fillRect(bx, by, bw, bh);
+      ctx.strokeStyle = (frame >> 4) % 2 === 0 ? '#ffd83d' : '#ffe873'; ctx.lineWidth = 3;
+      ctx.strokeRect(bx, by, bw, bh);
+      ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(bx + 3, by + 3, bw - 6, 10);
+      text('▶ START OVER', VW / 2, by + 18, 16, '#fff', 'center');
+      text('Pick your hero and play again', VW / 2, by + bh + 8, 9.5, '#b9cf9a', 'center');
+    }
     function drawOver(){
       drawBackground(LEVEL_THEMES[2]);
       ctx.fillStyle = 'rgba(30,6,4,0.45)'; ctx.fillRect(0, 0, VW, VH);
@@ -2751,6 +3250,9 @@
       else if (state === 'warp') drawWarp();
       else if (state === 'meal') drawMeal();
       else if (state === 'hug') drawHug();
+      else if (state === 'moonwarp') drawMoonWarp();
+      else if (state === 'cookietalk') drawCookieTalk();
+      else if (state === 'congrats') drawCongrats();
       else if (state === 'over') drawOver();
       else if (state === 'win') drawWin();
       else drawWorld();
