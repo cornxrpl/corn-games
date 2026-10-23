@@ -1,0 +1,3188 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Loop Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Luckiest+Guy&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --page-bg: #e9f5e4;
+        --page-bg-2: #d7ecc9;
+        --ink: #123524;
+        --ink-soft: #3d5c49;
+        --panel: #ffffff;
+        --panel-edge: #bcd8ab;
+        --accent: #e8a020;
+        --accent-ink: #4a2f00;
+        --danger: #d63b2a;
+        --good: #2e9e4f;
+        --bar-bg: rgba(255,255,255,.82);
+        --shadow: 0 10px 30px rgba(18,53,36,.22);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --page-bg: #08170f;
+          --page-bg-2: #0d2417;
+          --ink: #eaf6e6;
+          --ink-soft: #a9c8ab;
+          --panel: #12291b;
+          --panel-edge: #2c4a34;
+          --accent: #f2b33d;
+          --accent-ink: #2b1c00;
+          --bar-bg: rgba(10,28,17,.85);
+          --shadow: 0 10px 30px rgba(0,0,0,.5);
+        }
+      }
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      /* No zooming in, ever: the viewport is locked in the meta tag, and
+         touch-action: manipulation below tells the browser that taps on
+         controls are commands, not a double-tap-zoom gesture. Combined
+         with the script-side gesture blockers, tapping JUMP / RUN / the
+         timer can never change the screen scale on any device. */
+      html {
+        height: 100%;
+        touch-action: manipulation;
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+      }
+      body { height: 100%; touch-action: manipulation; }
+      button, input, select, textarea, a {
+        touch-action: manipulation;
+      }
+      /* iOS auto-zooms when a focused field's text is under 16px;
+         this floor keeps any field safely above that threshold. */
+      input, select, textarea { font-size: max(16px, 1em); }
+      body {
+        margin: 0;
+        font-family: "Baloo 2", system-ui, sans-serif;
+        color: var(--ink);
+        background: linear-gradient(180deg, var(--page-bg), var(--page-bg-2));
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        height: 100dvh;
+        overflow: hidden;
+      }
+      /* ---------- top control bar ---------- */
+      .topbar {
+        width: 100%;
+        max-width: 960px;
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 12px 4px;
+      }
+      .topbar .spacer { flex: 1; }
+      .tbtn {
+        font-family: inherit;
+        font-weight: 800;
+        font-size: 15px;
+        color: var(--ink);
+        background: var(--bar-bg);
+        border: 2px solid var(--panel-edge);
+        border-radius: 999px;
+        padding: 7px 14px;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(18,53,36,.12);
+      }
+      .tbtn:active { transform: translateY(1px); }
+      /* ---------- stage ---------- */
+      /* The stage fills whatever height the viewport leaves between the
+         top bar and the JUMP row, so the whole screen — top bar, stage,
+         hint — always fits with no page scrolling on any device. */
+      .stage-wrap {
+        width: 100%;
+        max-width: 960px;
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        padding: 6px 12px 0;
+      }
+      .stage {
+        position: relative;
+        flex: 1 1 auto;
+        width: 100%;
+        min-height: 0;
+        border-radius: 18px;
+        overflow: hidden;
+        box-shadow: var(--shadow);
+        border: 3px solid rgba(10,40,22,.55);
+        background: #79b657;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      canvas#game { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+      /* ---------- HUD ---------- */
+      .hud[hidden] { display: none; }
+      .hud {
+        position: absolute;
+        top: 10px; left: 0; right: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        pointer-events: none;
+        z-index: 5;
+      }
+      .timer-shell {
+        background: rgba(6,26,15,.78);
+        border: 3px solid rgba(255,255,255,.25);
+        border-radius: 16px;
+        padding: 2px 22px 6px;
+        text-align: center;
+        min-width: 168px;
+        pointer-events: auto;
+        cursor: pointer;
+        font-family: inherit;
+        color: #fff;
+      }
+      .timer-shell:active { transform: scale(.97); }
+      .timer-shell.armed {
+        border-color: #ffd34d;
+        box-shadow: 0 0 0 4px rgba(255,211,77,.45), 0 0 34px rgba(255,211,77,.75);
+        animation: armwiggle .45s infinite alternate;
+      }
+      @keyframes armwiggle { from { transform: scale(1) rotate(-.6deg); } to { transform: scale(1.05) rotate(.6deg); } }
+      .tap-hint {
+        display: none;
+        font-size: 14px; font-weight: 800; letter-spacing: 1.5px;
+        color: #ffd34d;
+        margin-top: 2px;
+        animation: pulse .4s infinite alternate;
+      }
+      .timer-shell.armed .tap-hint { display: block; }
+      .timer-label { font-size: 12px; font-weight: 800; letter-spacing: 2.5px; color: #bfe8b0; margin-top: 4px; }
+      .timer-num {
+        font-family: "Luckiest Guy", "Baloo 2", sans-serif;
+        font-size: 52px;
+        line-height: 1;
+        color: #fff;
+        text-shadow: 0 3px 0 rgba(0,0,0,.35);
+      }
+      .timer-num.low { color: #ff5d43; animation: pulse .5s infinite alternate; }
+      .timer-num.bump { animation: bump .45s ease; }
+      @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.09); } }
+      @keyframes bump { 0% { transform: scale(1); } 35% { transform: scale(1.35); color: #7dff8a; } 100% { transform: scale(1); } }
+      .hud-row {
+        margin-top: 8px;
+        display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+      }
+      .chip {
+        background: rgba(6,26,15,.72);
+        color: #eaf6e6;
+        font-weight: 800;
+        font-size: 14px;
+        border-radius: 999px;
+        padding: 4px 13px;
+        border: 2px solid rgba(255,255,255,.18);
+      }
+      .chip b { color: #ffd34d; }
+      /* ---------- castle HUD (castle fight only) ---------- */
+      .castle-hud[hidden] { display: none; }
+      .castle-hud {
+        position: absolute;
+        top: 10px; left: 0; right: 0;
+        display: flex; flex-direction: column; align-items: center;
+        pointer-events: none; z-index: 5; gap: 7px; padding: 0 10px;
+      }
+      .castle-panel {
+        background: rgba(18,14,32,.82);
+        border: 3px solid rgba(255,211,77,.55);
+        border-radius: 16px;
+        padding: 8px 18px 10px;
+        text-align: center; color: #fff; min-width: 240px;
+      }
+      .castle-title { font-family: "Luckiest Guy","Baloo 2",sans-serif; font-size: 20px; letter-spacing: 1px; color: #ffd34d; }
+      .castle-sub { font-size: 13.5px; font-weight: 800; color: #e8e2ff; margin-top: 1px; }
+      .castle-sub b { color: #7dff8a; }
+      .energy-label { font-size: 11.5px; font-weight: 800; letter-spacing: 2.5px; color: #ffb3a3; margin-top: 7px; }
+      .energy-bar { display: flex; gap: 5px; justify-content: center; margin-top: 4px; }
+      .eseg {
+        width: 40px; height: 16px; border-radius: 5px;
+        background: #35d05a; border: 2px solid rgba(255,255,255,.45);
+        box-shadow: 0 0 8px rgba(53,208,90,.55);
+      }
+      .eseg.mid { background: #ffb02e; box-shadow: 0 0 8px rgba(255,176,46,.55); }
+      .eseg.low { background: #ff4b33; box-shadow: 0 0 8px rgba(255,75,51,.6); }
+      .eseg.off { background: rgba(255,255,255,.13); box-shadow: none; border-color: rgba(255,255,255,.22); }
+      .castle-warn {
+        font-family: "Luckiest Guy","Baloo 2",sans-serif;
+        font-size: clamp(19px, 3.6vw, 28px); color: #ffd34d;
+        text-shadow: 0 2px 0 rgba(0,0,0,.6), 0 0 18px rgba(255,60,40,.8);
+        opacity: 0; transition: opacity .12s;
+      }
+      .castle-warn.show { opacity: 1; animation: pulse .32s infinite alternate; }
+      /* ---------- banners ---------- */
+      .banner {
+        position: absolute;
+        left: 50%; top: 34%;
+        transform: translate(-50%, -50%) scale(.8);
+        z-index: 6;
+        font-family: "Luckiest Guy", "Baloo 2", sans-serif;
+        font-size: clamp(20px, 5vw, 36px);
+        line-height: 1.18;
+        color: #fff;
+        text-align: center;
+        padding: 10px 18px;
+        border-radius: 16px;
+        background: rgba(10,60,30,.88);
+        border: 3px solid #7dff8a;
+        box-shadow: 0 12px 34px rgba(0,0,0,.4);
+        opacity: 0;
+        pointer-events: none;
+        /* Fit on iPhone: never a single wide line — the banner is
+           capped inside the stage and wraps to multiple lines. */
+        width: max-content;
+        max-width: calc(100% - 24px);
+        box-sizing: border-box;
+        white-space: normal;
+        overflow-wrap: break-word;
+        word-break: normal;
+      }
+      .banner.show { animation: bannerpop 2.2s ease forwards; }
+      .banner.bad { background: rgba(80,10,4,.9); border-color: #ff8a75; }
+      @keyframes bannerpop {
+        0% { opacity: 0; transform: translate(-50%,-50%) scale(.7); }
+        12% { opacity: 1; transform: translate(-50%,-50%) scale(1.06); }
+        20% { transform: translate(-50%,-50%) scale(1); }
+        82% { opacity: 1; }
+        100% { opacity: 0; transform: translate(-50%,-58%) scale(1); }
+      }
+      /* ---------- overlays ---------- */
+      .overlay {
+        position: absolute; inset: 0;
+        z-index: 10;
+        display: flex; align-items: center; justify-content: center;
+        padding: 16px;
+        background: rgba(5,22,12,.55);
+        backdrop-filter: blur(2px);
+      }
+      .overlay[hidden] { display: none; }
+      .card {
+        background: var(--panel);
+        color: var(--ink);
+        border-radius: 20px;
+        border: 3px solid var(--panel-edge);
+        box-shadow: var(--shadow);
+        max-width: 520px;
+        width: 100%;
+        max-height: 100%;
+        overflow-y: auto;
+        padding: 22px 24px 24px;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+      }
+      /* The first button hugs the bottom of the card: slack space (from the
+         card stretching to fill a tall stage) collects above it, never below
+         the last button, so no button can ever be pushed past the card edge. */
+      .card > .btn:first-of-type { margin-top: auto; }
+      .card h1 {
+        font-family: "Luckiest Guy", "Baloo 2", sans-serif;
+        font-size: clamp(34px, 7vw, 52px);
+        margin: 2px 0 4px;
+        color: #1d6b35;
+        letter-spacing: 1px;
+      }
+      @media (prefers-color-scheme: dark) { .card h1 { color: #8fe388; } }
+      .card h2 {
+        font-family: "Luckiest Guy", "Baloo 2", sans-serif;
+        font-size: 28px; margin: 0 0 8px; color: #1d6b35; letter-spacing: .5px;
+      }
+      @media (prefers-color-scheme: dark) { .card h2 { color: #8fe388; } }
+      .card p { font-size: 17px; line-height: 1.45; color: var(--ink-soft); margin: 8px 0; font-weight: 600; }
+      .card p strong { color: var(--ink); }
+      .btn {
+        font-family: inherit;
+        font-weight: 800;
+        font-size: 19px;
+        border-radius: 14px;
+        border: none;
+        cursor: pointer;
+        padding: 13px 26px;
+        margin-top: 12px;
+        width: 100%;
+      }
+      .btn:active { transform: translateY(2px); }
+      .btn.go { background: #2e9e4f; color: #fff; box-shadow: 0 5px 0 #1c6b32; font-size: 22px; }
+      .btn.go:active { box-shadow: 0 2px 0 #1c6b32; }
+      .btn.alt { background: var(--accent); color: var(--accent-ink); box-shadow: 0 5px 0 #b97c10; }
+      .btn.alt:active { box-shadow: 0 2px 0 #b97c10; }
+      .btn.ghost { background: transparent; color: var(--ink-soft); border: 2px solid var(--panel-edge); box-shadow: none; }
+      .howto { text-align: left; margin: 10px auto 2px; max-width: 420px; }
+      .howto li { font-size: 16px; font-weight: 600; color: var(--ink-soft); margin: 7px 0; line-height: 1.4; }
+      .howto li strong { color: var(--ink); }
+      code.k {
+        background: rgba(127,127,127,.18);
+        border-radius: 6px; padding: 1px 7px;
+        font-family: inherit; font-weight: 800; color: var(--ink);
+      }
+      /* Home Screen title is a tap target — same look and layout,
+         just tappable, with no text selection on rapid taps. */
+      #homeTitle { cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+      /* ---------- debug log ---------- */
+      .debug-log {
+        text-align: left;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 12px; line-height: 1.55;
+        background: var(--page-bg);
+        color: var(--ink);
+        border: 2px solid var(--panel-edge);
+        border-radius: 12px;
+        padding: 10px 12px;
+        margin-top: 10px;
+        height: 260px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .debug-actions { display: flex; gap: 8px; }
+      .debug-actions .btn { padding: 10px 6px; font-size: 15px; }
+      .shake { animation: shake .4s ease; }
+      @keyframes shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-9px); } 40% { transform: translateX(9px); } 60% { transform: translateX(-6px); } 80% { transform: translateX(6px); } }
+      /* ---------- win overlay ---------- */
+      .overlay.win {
+        background: rgba(0,0,0,.35);
+        animation: winflash .5s steps(2, jump-none) infinite;
+      }
+      @keyframes winflash {
+        0% { background: rgba(255,209,26,.55); }
+        50% { background: rgba(214,59,42,.55); }
+        100% { background: rgba(46,158,79,.55); }
+      }
+      .win-card {
+        background: transparent; border: none; box-shadow: none;
+        text-align: center; max-width: 640px;
+      }
+      .win-title {
+        font-family: "Luckiest Guy", "Baloo 2", sans-serif;
+        font-size: clamp(56px, 13vw, 118px);
+        line-height: .95;
+        color: #fff;
+        text-shadow: 0 6px 0 #b97c10, 0 12px 34px rgba(0,0,0,.55);
+        animation: blinkhard .6s steps(2, jump-none) infinite;
+        margin: 0;
+      }
+      @keyframes blinkhard { 0% { opacity: 1; transform: scale(1) rotate(-1.2deg); } 50% { opacity: .15; transform: scale(1.05) rotate(1.2deg); } 100% { opacity: 1; transform: scale(1) rotate(-1.2deg); } }
+      .win-sub {
+        color: #fff; font-size: clamp(17px, 3.4vw, 23px); font-weight: 800;
+        text-shadow: 0 2px 10px rgba(0,0,0,.7); margin: 14px 0 4px;
+      }
+      .win-stats { color: #ffe9a8; font-weight: 800; font-size: 17px; text-shadow: 0 2px 8px rgba(0,0,0,.7); }
+      .win-card .btn { max-width: 320px; margin-left: auto; margin-right: auto; display: block; }
+      /* ---------- game over overlay (castle lose) ---------- */
+      .gameover-card { max-width: 420px; }
+      .gameover-card h1 {
+        font-size: clamp(34px, 9vw, 48px);
+        line-height: 1.05;
+        white-space: normal;
+        overflow-wrap: break-word;
+        color: #b3271a;
+      }
+      @media (prefers-color-scheme: dark) { .gameover-card h1 { color: #ff8a75; } }
+      .gameover-msg {
+        font-size: clamp(18px, 4.6vw, 22px);
+        font-weight: 800;
+        line-height: 1.35;
+        color: var(--ink);
+        white-space: normal;
+        overflow-wrap: break-word;
+        margin: 10px 0 4px;
+      }
+      /* ---------- splash title picture (first screen on load) ---------- */
+      .overlay.splash {
+        padding: 0 12px calc(16px + env(safe-area-inset-bottom));
+        background: #8ed94f;
+        backdrop-filter: none;
+        flex-direction: column;
+        justify-content: flex-end;
+        align-items: center;
+      }
+      .splash-art {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #79c94f;
+      }
+      /* Blurred cover copy fills the leftover stage area around the
+         fit-whole picture — it is decorative only, never the picture
+         the player reads, so its cropping does not matter. */
+      .splash-bg {
+        position: absolute;
+        inset: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center;
+        filter: blur(22px) saturate(1.15);
+        transform: scale(1.12);
+        opacity: .85;
+      }
+      /* Fit-whole (contain) on every screen, especially tall portrait
+         phones: the landscape title picture is never cropped on the
+         sides, so the full LOOP GAME title, the boy, and the purple,
+         orange and pink monsters all stay inside the frame. */
+      .splash-img {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        display: block;
+        width: 100%;
+        height: 100%;
+        max-width: none;
+        max-height: none;
+        object-fit: contain;
+        object-position: center;
+      }
+      .enter-btn {
+        position: relative;
+        z-index: 2;
+        flex: none;
+        margin-top: 0;
+        font-family: "Luckiest Guy", "Baloo 2", sans-serif;
+        font-size: clamp(22px, 4.5vw, 32px);
+        letter-spacing: 1px;
+        color: #fff;
+        background: #2e9e4f;
+        border: 3px solid #fff;
+        border-radius: 999px;
+        padding: 13px 52px 10px;
+        min-height: 58px;
+        min-width: min(320px, 82vw);
+        cursor: pointer;
+        box-shadow: 0 6px 0 #1c6b32, 0 14px 30px rgba(0,0,0,.35);
+        touch-action: manipulation;
+      }
+      .enter-btn:active { transform: translateY(3px); box-shadow: 0 3px 0 #1c6b32, 0 8px 18px rgba(0,0,0,.3); }
+      @media (max-height: 540px) {
+        .enter-btn { min-height: 46px; padding: 8px 40px 6px; font-size: 20px; }
+        .overlay.splash { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+      }
+      /* ---------- touch controls ---------- */
+      .touch-row {
+        width: 100%; max-width: 960px;
+        flex: none;
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+        gap: 10px;
+      }
+      .hint-line { font-size: 15px; font-weight: 700; color: var(--ink-soft); flex: 1 1 auto; min-width: 0; text-align: center; }
+      .jump-btn {
+        font-family: inherit;
+        font-weight: 800; font-size: 21px;
+        background: #2e9e4f; color: #fff;
+        border: none; border-radius: 999px;
+        padding: 16px 42px;
+        box-shadow: 0 5px 0 #1c6b32;
+        cursor: pointer;
+        touch-action: manipulation;
+      }
+      .jump-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #1c6b32; }
+      .jump-btn:disabled { opacity: .45; }
+      .run-btn {
+        font-family: inherit;
+        font-weight: 800; font-size: 21px;
+        background: #e8820c; color: #fff;
+        border: none; border-radius: 999px;
+        padding: 16px 38px;
+        box-shadow: 0 5px 0 #9c5606;
+        cursor: pointer;
+        touch-action: manipulation;
+      }
+      .run-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #9c5606; }
+      .run-btn:disabled { opacity: .45; }
+      .run-btn.active {
+        background: #ff9d1f;
+        box-shadow: 0 5px 0 #b96c07, 0 0 22px rgba(255,157,31,.8);
+        animation: pulse .35s infinite alternate;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .win-title, .overlay.win, .timer-num.low { animation-duration: 1.6s; }
+      }
+      /* Compact cards so every button fits inside the stage on small screens.
+         Keyed on SHORT viewport height as well as narrow width: a wide but
+         short screen (landscape phone, iPad landscape, short window) needs
+         the small card just as much as a narrow phone does.
+         Kept last so these win over the base card rules above. */
+      @media (max-width: 560px), (max-height: 780px) {
+        .overlay { padding: 10px; }
+        .card { padding: 14px 16px 16px; border-radius: 16px; }
+        .card h1 { font-size: 30px; margin: 0 0 2px; }
+        .card h2 { font-size: 23px; }
+        .card p { font-size: 14.5px; line-height: 1.32; margin: 6px 0; }
+        .btn { font-size: 16px; padding: 10px 16px; margin-top: 9px; border-radius: 12px; }
+        .btn.go { font-size: 18px; }
+        .howto li { font-size: 14.5px; margin: 5px 0; line-height: 1.35; }
+        .debug-log { height: 190px; font-size: 11px; }
+        .timer-num { font-size: 42px; }
+        .timer-shell { min-width: 138px; padding: 2px 14px 5px; }
+        .chip { font-size: 12.5px; padding: 3px 10px; }
+      }
+      /* Very short screens (landscape phones): tighten everything further and
+         let the title card use more of the stage width, so all three home
+         buttons fit inside the card with clearance. */
+      @media (max-height: 540px) {
+        .topbar { padding: 6px 12px 2px; }
+        .tbtn { font-size: 13px; padding: 5px 11px; }
+        .stage-wrap { padding-top: 4px; }
+        .overlay { padding: 8px; }
+        .card { padding: 10px 14px 12px; max-width: 620px; }
+        .card h1 { font-size: 24px; }
+        .card h2 { font-size: 20px; margin-bottom: 4px; }
+        .card p { font-size: 13px; line-height: 1.28; margin: 4px 0; }
+        .btn { font-size: 14px; padding: 7px 14px; margin-top: 7px; border-radius: 10px; }
+        .btn.go { font-size: 15px; }
+        .howto { margin-top: 4px; }
+        .howto li { font-size: 13px; margin: 3px 0; line-height: 1.3; }
+        .timer-num { font-size: 34px; }
+        .timer-shell { min-width: 120px; padding: 1px 12px 4px; }
+        .timer-label { font-size: 10px; margin-top: 2px; }
+        .chip { font-size: 11.5px; padding: 2px 9px; }
+        .hud-row { margin-top: 6px; }
+        .touch-row { padding: 6px 14px calc(6px + env(safe-area-inset-bottom)); }
+        .hint-line { font-size: 13px; }
+        .jump-btn { font-size: 17px; padding: 10px 32px; }
+        .run-btn { font-size: 17px; padding: 10px 28px; }
+        .win-title { font-size: clamp(40px, 11vh, 64px); }
+        .win-sub { font-size: 14px; margin: 8px 0 2px; }
+        .win-stats { font-size: 14px; }
+      }
+      /* Bottom control row on narrow screens: RUN stays far left and JUMP
+         far right on their own line, and the hint takes a full line above
+         them so it is never squeezed or clipped between the buttons. */
+      @media (max-width: 560px) {
+        /* Three buttons share the top bar now (Back to menu / Menu /
+           Sound): shrink them a touch so the row never overflows. */
+        .topbar { gap: 6px; padding: 8px 10px 2px; }
+        .tbtn { font-size: 13.5px; padding: 6px 11px; white-space: nowrap; }
+        .touch-row { flex-wrap: wrap; }
+        .hint-line { order: -1; flex: 0 0 100%; font-size: 13px; }
+        .run-btn { padding: 14px 34px; }
+        .jump-btn { padding: 14px 40px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <button class="tbtn" id="backMenuBtn" type="button">← Back to menu</button>
+      <button class="tbtn" id="menuBtn" aria-label="Menu">☰ Menu</button>
+      <div class="spacer"></div>
+      <button class="tbtn" id="soundBtn">Sound: ON</button>
+    </div>
+
+    <div class="stage-wrap">
+      <div class="stage" id="stage">
+        <canvas id="game"></canvas>
+
+        <div class="hud" id="hud" hidden>
+          <button class="timer-shell" id="timerShell" type="button" aria-label="Timer — tap at 5 seconds to add 25 seconds">
+            <div class="timer-num" id="timerNum">30</div>
+            <div class="timer-label">SECONDS LEFT</div>
+            <div class="tap-hint" id="tapHint">👆 TAP FOR +25!</div>
+          </button>
+          <div class="hud-row">
+            <span class="chip">LOOP <b id="loopCount">1</b></span>
+            <span class="chip">DISTANCE <b id="distCount">0</b>m</span>
+            <span class="chip">+25s FOUND <b id="bonusCount">0</b></span>
+          </div>
+        </div>
+
+        <!-- CASTLE HUD (castle fight only — the jungle HUD never shows an energy bar) -->
+        <div class="castle-hud" id="castleHud" hidden>
+          <div class="castle-panel">
+            <div class="castle-title">🏰 CASTLE SNAKE 🏰</div>
+            <div class="castle-sub">ROCK HITS <b id="castleHits">0</b> / 50 &nbsp;•&nbsp; ROCKS FIRED <b id="castleFired">0</b></div>
+            <div class="energy-label">⚡ YOUR ENERGY ⚡</div>
+            <div class="energy-bar" id="energyBar">
+              <span class="eseg"></span><span class="eseg"></span><span class="eseg"></span><span class="eseg"></span><span class="eseg"></span>
+            </div>
+          </div>
+          <div class="castle-warn" id="castleWarn">⚠ IT'S ABOUT TO STRIKE — DODGE! ⚠</div>
+        </div>
+
+        <div class="banner" id="banner"></div>
+
+        <!-- SPLASH TITLE PICTURE (first screen on load) -->
+        <div class="overlay splash" id="splashScreen">
+          <div class="splash-art">
+            <img class="splash-bg" src="assets/title.jpg" alt="" aria-hidden="true" />
+            <img class="splash-img" src="assets/title.jpg" alt="Loop Game — a boy in blue running on a jungle dirt path, chased by a purple monster, an orange monster, and a pink monster" />
+          </div>
+          <button class="enter-btn" id="enterGameBtn" type="button">ENTER GAME</button>
+        </div>
+
+        <!-- HOME SCREEN -->
+        <div class="overlay" id="titleScreen" hidden>
+          <div class="card">
+            <h1 id="homeTitle">LOOP GAME</h1>
+            <p>The jungle path never ends. The monsters never stop. And the clock…
+              <strong>never reaches zero.</strong></p>
+            <p>Your timer starts at <strong>30 seconds</strong>. At <strong>5</strong>, the
+              timer lights up — <strong>tap it</strong> to grab <strong>+25 more seconds</strong>.
+              Miss the tap and the loop adds them anyway, forever.</p>
+            <button class="btn go" id="startBtn">▶ START GAME</button>
+            <button class="btn ghost" id="howBtnTitle">HOW TO PLAY</button>
+          </div>
+        </div>
+
+        <!-- HOW TO PLAY -->
+        <div class="overlay" id="howScreen" hidden>
+          <div class="card">
+            <h2>HOW TO PLAY</h2>
+            <ul class="howto">
+              <li><strong>Run!</strong> Your runner flees on his own — your job is to keep him on his feet.</li>
+              <li><strong>Jump</strong> with <code class="k">SPACE</code>, <code class="k">↑</code>, a tap on the jungle, or the green JUMP button to clear logs, rocks, stumps, toadstools, coconut piles, vine tangles and puddles.</li>
+              <li><strong>Need distance?</strong> Hit the orange <strong>RUN</strong> button (or press <code class="k">R</code>) for a burst of speed that pulls you away from the monsters.</li>
+              <li><strong>Watch the vines!</strong> Snakes hang from the vines up top. When one shakes, hisses and flashes <strong>!</strong>, it's about to drop and strike low — <strong>jump its head</strong> or <strong>sprint past</strong> before it lands. Then it slithers back up… and can drop again. A strike only makes you stumble, same as any obstacle.</li>
+              <li><strong>Stumble and they gain.</strong> Every crash lets the monsters creep closer. Run clean and they fall behind.</li>
+              <li><strong>They can never catch you.</strong> When a monster gets extremely close, it slows right down and stalls at your heels — terrifying, but it can never grab you. The clock is the only enemy… and it never reaches zero.</li>
+              <li><strong>The timer:</strong> 30 seconds… down to 5… the timer lights up — <strong>TAP THE TIMER</strong> to grab <strong>+25 seconds</strong> (jingle included!). Too slow? The loop adds the +25 anyway. There is no zero. There is only the loop.</li>
+              <li><strong>Weather:</strong> every time the timer resets — each <strong>+25</strong> and each fresh run — the jungle weather changes at random: sunny, cloudy, rainy, stormy with lightning, sunset, or night with a moon. It's just the sky putting on a show; the run itself never changes.</li>
+              <li><strong>🏰 The castle snake:</strong> the timer hit :02, you ran through the castle door, and it slammed behind you — but the loop has one last guard: <strong>a giant two-headed striking snake!</strong> Pull out your <strong>slingshot</strong> and fire rocks with the big <strong>FIRE</strong> button, a tap right on the snake, or <code class="k">SPACE</code>. Land <strong>50 rock hits</strong> to beat it and win the game! When both heads rear back, hiss and flash <strong>!</strong>, it's about to strike — hit <strong>DODGE</strong> or move with <code class="k">◀</code> <code class="k">▶</code>. Both heads lunge together as one strike — a strike that lands costs <strong>1 energy</strong> from your castle energy bar — you only have <strong>5</strong>. Lose them all and it's <strong>Game Over</strong> — tap <strong>Start Over</strong> to go back to the Home Screen and try again.</li>
+              <li><strong>Careful with the +25 tap:</strong> if you are headed for the castle and you tap the timer for <strong>+25</strong> at 5 seconds, the castle waits — the door appears when the timer <strong>next</strong> counts down to <strong>:02</strong>.</li>
+            </ul>
+            <button class="btn go" id="howBackBtn">GOT IT</button>
+          </div>
+        </div>
+
+        <!-- MENU / PAUSE -->
+        <div class="overlay" id="menuScreen" hidden>
+          <div class="card">
+            <h2>PAUSED</h2>
+            <p>The monsters wait… but the loop is patient too.</p>
+            <button class="btn go" id="resumeBtn">KEEP RUNNING</button>
+            <button class="btn ghost" id="howBtnMenu">HOW TO PLAY</button>
+            <button class="btn ghost" id="debugBtn">DEBUG LOG</button>
+            <button class="btn ghost" id="restartBtn">RESTART THE LOOP</button>
+            <button class="btn ghost" id="quitBtn">QUIT TO TITLE</button>
+          </div>
+        </div>
+
+        <!-- DEBUG LOG (hamburger menu only) -->
+        <div class="overlay" id="debugScreen" hidden>
+          <div class="card">
+            <h2>DEBUG LOG</h2>
+            <div class="debug-log" id="debugLog">(log is empty)</div>
+            <div class="debug-actions">
+              <button class="btn alt" id="debugDownload">DOWNLOAD</button>
+              <button class="btn ghost" id="debugClear">CLEAR</button>
+              <button class="btn go" id="debugClose">CLOSE</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- WIN -->
+        <div class="overlay win" id="winScreen" hidden>
+          <div class="win-card">
+            <p class="win-title">YOU<br />WON!</p>
+            <p class="win-sub">🎉 You broke the loop! The timer shatters, the monsters
+              melt back into the jungle, and the path finally — finally — ends. 🎉</p>
+            <p class="win-stats" id="winStats"></p>
+            <button class="btn alt" id="againBtn">Start Over</button>
+          </div>
+        </div>
+
+        <!-- GAME OVER (castle snake lose: struck 5 times) -->
+        <div class="overlay" id="gameOverScreen" hidden>
+          <div class="card gameover-card">
+            <h1>GAME OVER</h1>
+            <p class="gameover-msg">Struck 5 times! The snake wins.</p>
+            <button class="btn alt" id="gameOverBtn" type="button">Start Over</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="touch-row">
+      <button class="run-btn" id="runBtn" disabled>RUN</button>
+      <span class="hint-line">Tap the jungle, press SPACE, or hit JUMP to leap. Hit RUN to sprint ahead of the monsters.</span>
+      <button class="jump-btn" id="jumpBtn" disabled>JUMP</button>
+    </div>
+
+    <script>
+    (function () {
+      "use strict";
+
+      /* ============================================================
+         LOOP GAME — an endless jungle escape.
+         Timer: starts at 30s (TEMPORARY — normally 100s; Ryan will move it back). At 5s -> +25s. Forever.
+         ============================================================ */
+
+      // There is no code to type anywhere. The castle is armed only by
+      // the hidden Home Screen title tap (see onHomeTitleTap below);
+      // once armed, the castle snake fight begins when the timer
+      // reaches :02 (before the +25 auto-add at :01).
+      // TEMPORARY start time: 30 seconds instead of the usual 100.
+      // Ryan asked for 30 for now and will move it back to 100 later —
+      // change this one number back when he does.
+      var START_TIME = 30;
+
+      var stage = document.getElementById("stage");
+      var canvas = document.getElementById("game");
+      var ctx = canvas.getContext("2d");
+
+      var hud = document.getElementById("hud");
+      var timerShell = document.getElementById("timerShell");
+      var timerNum = document.getElementById("timerNum");
+      var loopCountEl = document.getElementById("loopCount");
+      var distCountEl = document.getElementById("distCount");
+      var bonusCountEl = document.getElementById("bonusCount");
+      var banner = document.getElementById("banner");
+
+      var splashScreen = document.getElementById("splashScreen");
+      var titleScreen = document.getElementById("titleScreen");
+      var howScreen = document.getElementById("howScreen");
+      var menuScreen = document.getElementById("menuScreen");
+      var winScreen = document.getElementById("winScreen");
+      var gameOverScreen = document.getElementById("gameOverScreen");
+      var debugScreen = document.getElementById("debugScreen");
+      var castleHud = document.getElementById("castleHud");
+      var castleHitsEl = document.getElementById("castleHits");
+      var castleFiredEl = document.getElementById("castleFired");
+      var castleWarnEl = document.getElementById("castleWarn");
+      var energyBarEl = document.getElementById("energyBar");
+      var hintLine = document.querySelector(".hint-line");
+      var hintDefault = hintLine ? hintLine.textContent : "";
+      var debugLogEl = document.getElementById("debugLog");
+      var winStats = document.getElementById("winStats");
+      var jumpBtn = document.getElementById("jumpBtn");
+      var runBtn = document.getElementById("runBtn");
+      var soundBtn = document.getElementById("soundBtn");
+      var homeTitleEl = document.getElementById("homeTitle");
+
+      /* ---------------- debug log (hamburger menu only) ----------------
+         On-device only, last 500 entries. Every storage touch is guarded:
+         the logger itself must never be able to crash the game. */
+      var LOG_KEY = "loopgame.debuglog.v1";
+      var SESSION_KEY = "loopgame.session.open";
+      var debugEntries = [];
+
+      function storageGet(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
+      function storageSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) {} }
+      // Log saves are throttled: rapid events (e.g. RUN taps) used to force a
+      // full localStorage write per tap. Now writes coalesce to ~1 per 1.2s,
+      // with an immediate flush when the page goes away.
+      var logSaveTimer = null, logDirty = false;
+      function saveLog() {
+        logDirty = true;
+        if (logSaveTimer) return;
+        logSaveTimer = setTimeout(function () {
+          logSaveTimer = null;
+          flushLog();
+        }, 1200);
+      }
+      function flushLog() {
+        if (!logDirty) return;
+        logDirty = false;
+        try { window.localStorage.setItem(LOG_KEY, JSON.stringify(debugEntries)); } catch (e) {}
+      }
+      function logEvent(msg) {
+        try {
+          debugEntries.push({ t: new Date().toISOString(), msg: String(msg) });
+          while (debugEntries.length > 500) debugEntries.shift();
+          saveLog();
+          if (debugScreen && !debugScreen.hidden) renderDebugLog();
+        } catch (e) { /* the logger never crashes the game */ }
+      }
+      function renderDebugLog() {
+        try {
+          if (!debugEntries.length) { debugLogEl.textContent = "(log is empty)"; return; }
+          var lines = [];
+          for (var i = 0; i < debugEntries.length; i++) {
+            lines.push("[" + debugEntries[i].t + "] " + debugEntries[i].msg);
+          }
+          debugLogEl.textContent = lines.join("\n");
+          debugLogEl.scrollTop = debugLogEl.scrollHeight;
+        } catch (e) {}
+      }
+      // Restore any saved log; if the previous session never closed cleanly,
+      // mark it — that's the fingerprint of a crash or a killed tab.
+      try {
+        var savedLog = storageGet(LOG_KEY);
+        if (savedLog) {
+          var parsedLog = JSON.parse(savedLog);
+          if (parsedLog && parsedLog.length) debugEntries = parsedLog.slice(-500);
+        }
+      } catch (e) { debugEntries = []; }
+      /* ---- crash forensics (second silent-reload investigation) ----
+         Both reported crashes were a plain "Page loaded" less than ~1.3s
+         after a RUN tap, with NO error entry and — tellingly — NO unclean
+         marker either. The old marker could not distinguish causes: it
+         cleared itself on ANY pagehide/beforeunload, so an orderly reload
+         (host/webview re-navigation) looked identical to a clean exit,
+         and a process kill left only the same single flag. This trail is
+         built to separate the suspects next time:
+           • a HEARTBEAT, written synchronously once a second while the
+             game is open, snapshots mode/timer/gap/counts/canvas size;
+           • a CLOSE RECORD, written synchronously inside pagehide /
+             beforeunload / freeze, proves an orderly unload signal ran;
+           • RUN taps write a durable breadcrumb BEFORE and AFTER their
+             work (see doRun), so a tap that never finished shows up.
+         On load we compare them: heartbeat with no close record after
+         it = the page vanished without an unload (process kill /
+         jetsam-style termination). A close record = something performed
+         an orderly reload or navigation. Neither proves a cause alone,
+         but together they narrow it far better than the old flag. */
+      var HB_KEY = "loopgame.heartbeat.v1";
+      var CLOSE_KEY = "loopgame.close.v1";
+      var frameCount = 0, fpsCount = 0, fpsNow = 0;
+      function writeCloseRecord(kind) {
+        try {
+          window.localStorage.setItem(CLOSE_KEY, JSON.stringify({
+            kind: kind, t: Date.now(),
+            mode: (typeof S !== "undefined" && S) ? S.mode : "?",
+            persisted: (window.event && window.event.persisted) ? 1 : 0
+          }));
+        } catch (e) {}
+      }
+      try {
+        var prevHB = null, prevClose = null;
+        try { prevHB = JSON.parse(storageGet(HB_KEY) || "null"); } catch (e) {}
+        try { prevClose = JSON.parse(storageGet(CLOSE_KEY) || "null"); } catch (e) {}
+        if (prevHB && prevHB.t) {
+          var hbAgeS = Math.max(0, Math.round((Date.now() - prevHB.t) / 1000));
+          var closeAfterHB = prevClose && prevClose.t >= prevHB.t - 250;
+          if (closeAfterHB) {
+            logEvent("DIAG: previous session ended with an orderly unload signal (" + prevClose.kind +
+              ") ~" + hbAgeS + "s after its last heartbeat. Last state: mode=" + prevHB.mode +
+              " timer=" + prevHB.time + "s dist=" + prevHB.dist + "m gap=" + Math.round(prevHB.gap || 0) +
+              " runBurst=" + (prevHB.runT > 0 ? "ACTIVE" : "off") + ". An orderly reload/navigation ran — not a silent process kill.");
+          } else if (hbAgeS < 900) {
+            logEvent("⚠ UNCLEAN END: NO unload signal after the last heartbeat " + hbAgeS +
+              "s before this load — the page vanished (process kill / webview termination suspected, cause not proven). Last state: mode=" + prevHB.mode +
+              " timer=" + prevHB.time + "s dist=" + prevHB.dist + "m gap=" + Math.round(prevHB.gap || 0) +
+              " runBurst=" + (prevHB.runT > 0 ? "ACTIVE" : "off") + " fps=" + prevHB.fps +
+              " particles=" + prevHB.particles + " obstacles=" + prevHB.obstacles +
+              " canvas=" + prevHB.cw + "x" + prevHB.ch + " dpr=" + prevHB.dpr + ".");
+          }
+        } else if (storageGet(SESSION_KEY) === "1") {
+          logEvent("⚠ Reloaded after a session that did not close cleanly — possible crash.");
+        }
+        try { window.localStorage.removeItem(CLOSE_KEY); } catch (e) {}
+      } catch (e) {}
+      storageSet(SESSION_KEY, "1");
+      window.addEventListener("pagehide", function () {
+        writeCloseRecord("pagehide");
+        logEvent("Page hiding — orderly unload signal (pagehide).");
+        storageSet(SESSION_KEY, "0"); flushLog();
+      });
+      window.addEventListener("beforeunload", function () {
+        writeCloseRecord("beforeunload");
+        storageSet(SESSION_KEY, "0"); flushLog();
+      });
+      window.addEventListener("pageshow", function () { storageSet(SESSION_KEY, "1"); });
+      document.addEventListener("freeze", function () {
+        writeCloseRecord("freeze");
+        logEvent("Page frozen by the browser (lifecycle freeze).");
+        flushLog();
+      });
+      document.addEventListener("resume", function () { logEvent("Page resumed from freeze."); });
+      // The heartbeat itself: 1 per second, cheap, synchronous, tiny.
+      setInterval(function () {
+        try {
+          fpsNow = fpsCount; fpsCount = 0;
+          window.localStorage.setItem(HB_KEY, JSON.stringify({
+            t: Date.now(),
+            mode: (typeof S !== "undefined" && S) ? S.mode : "?",
+            time: (typeof S !== "undefined" && S) ? Math.ceil(S.time) : 0,
+            dist: (typeof S !== "undefined" && S) ? Math.floor(S.distance) : 0,
+            gap: (typeof S !== "undefined" && S) ? S.gap : 0,
+            runT: (typeof S !== "undefined" && S) ? +S.runT.toFixed(2) : 0,
+            fps: fpsNow,
+            particles: (typeof particles !== "undefined") ? particles.length : 0,
+            obstacles: (typeof obstacles !== "undefined") ? obstacles.length : 0,
+            cw: canvas.width, ch: canvas.height,
+            dpr: Math.min(window.devicePixelRatio || 1, 2),
+            memMB: (performance && performance.memory) ? Math.round(performance.memory.usedJSHeapSize / 1048576) : -1
+          }));
+        } catch (e) {}
+      }, 1000);
+      logEvent("Page loaded.");
+      // Page errors land in the log with message and stack.
+      window.addEventListener("error", function (e) {
+        var m = "PAGE ERROR: " + (e && e.message ? e.message : "unknown error");
+        if (e && e.error && e.error.stack) m += "\n" + e.error.stack;
+        else if (e && e.filename) m += " (" + e.filename + ":" + e.lineno + ")";
+        logEvent(m);
+      });
+      window.addEventListener("unhandledrejection", function (e) {
+        var r = e ? e.reason : null;
+        var m = "UNHANDLED PROMISE REJECTION: " + (r && r.message ? r.message : String(r));
+        if (r && r.stack) m += "\n" + r.stack;
+        logEvent(m);
+      });
+
+      /* ---------------- state ---------------- */
+      // The monsters can NEVER catch the runner. The gap can never close
+      // past GAP_MIN, and when they get extremely close (gap < GAP_CLOSE)
+      // they slow right down, so point-blank stumbles barely lose ground.
+      var GAP_MIN = 55, GAP_CLOSE = 85;
+
+      var S = {
+        mode: "splash",       // splash | title | playing | paused | won | gameover
+        returnTo: "title",    // where the How to Play screen goes back to
+        time: START_TIME,
+        loops: 1,
+        bonuses: 0,
+        distance: 0,
+        elapsed: 0,
+        gap: 150,             // px between runner and lead monster
+        gapMax: 180,
+        speed: 265,           // world px per second
+        runT: 0,              // seconds of RUN burst left
+        stumbleT: 0,
+        armed: false,         // +25 is loaded and waiting for a tap
+        castlePending: false, // castle armed: castle opens when the timer hits :02
+        invulnT: 0,
+        shake: 0,
+        flash: 0
+      };
+
+      /* ---------------- castle boss fight state ----------------
+         Entered only when the castle has been armed. One two-headed
+         striking snake boss sharing a single body, a slingshot that
+         fires rocks (50 hits to win), and an energy bar that exists
+         ONLY here — 5 segments, 1 lost per landed strike (both heads
+         lunge together as a single attack, so a landed strike still
+         costs exactly 1 energy, never 2). Lose all 5 and the Game
+         Over screen pops up.
+         Difficulty: castle snake attack timings scaled by 1.5x
+         (50% harder) — see updateCastle / castleSnakeHead below. */
+      var C = {
+        active: false,       // castle scene is on the canvas
+        energy: 5,
+        hits: 0,             // rocks that have hit the snake
+        fired: 0,            // rocks fired
+        needed: 50,
+        snakeState: "idle",  // idle | warn | strike | recover | hurt | dying
+        snakeT: 0,
+        idleFor: 0.93, // 1.4 / 1.5 — 50% harder castle snake
+        strikeX: 0,          // where the strike will land (locked at warn end)
+        strikeHitDone: true,
+        playerOff: 0,        // px offset from the player's castle spot
+        playerTarget: 0,     // where the player is moving to
+        dodgeT: 0,
+        fireCd: 0,
+        invulnT: 0,
+        flashT: 0,
+        hurtT: 0,
+        overT: 0,            // unused legacy field — defeat now goes straight to Game Over
+        won: false,
+        rocks: []            // {x,y,sx,sy,t,dur}
+      };
+      var keysHeld = {};
+
+      var W = 960, H = 600, groundY = 0;
+
+      var skyGrad = null, groundGrad = null;
+
+      /* ---------------- jungle weather (visual only) ----------------
+         The jungle weather changes RANDOMLY after every timer reset:
+         each +25 add (tap at 5s or the loop's auto-add at 1s, both go
+         through addBonus) and each fresh run start (startGame). The new
+         weather is always DIFFERENT from the one just shown, so the
+         change is visible. Weather is purely cosmetic — sky, sun/moon,
+         clouds, rain and lightning only. It never touches the runner,
+         monsters, obstacles, vine snakes, timer rules, speed,
+         difficulty, HUD or controls, and it never applies inside the
+         castle (drawCastle is a separate scene and reads none of this). */
+      var WEATHER_NAMES = ["sunny", "cloudy", "rainy", "stormy", "sunset", "night"];
+      var WEATHER_DEFS = {
+        sunny:  { sky: ["#8ed8f8", "#cdeeb0", "#e8f7c9"], ground: ["#69a34a", "#55853a", "#3d6629"], far: "#5da24e", mid: "#3e7d33", clouds: 3, cloud: "rgba(255,255,255,.92)", cloudShade: "rgba(190,220,235,.85)", rain: 0, lightning: false, celestial: "sun" },
+        cloudy: { sky: ["#9db8c4", "#b9c9b0", "#d8e4c4"], ground: ["#5f8f46", "#4c7436", "#385e27"], far: "#527a4a", mid: "#365f2f", clouds: 7, cloud: "rgba(238,241,243,.96)", cloudShade: "rgba(168,182,190,.9)", rain: 0, lightning: false, celestial: "dimSun" },
+        rainy:  { sky: ["#5f7f95", "#7d9aa0", "#9db89b"], ground: ["#4e7d3a", "#3f652e", "#2f4f22"], far: "#466e42", mid: "#2f5529", clouds: 6, cloud: "rgba(120,138,152,.95)", cloudShade: "rgba(84,102,118,.95)", rain: 75, lightning: false, celestial: "none" },
+        stormy: { sky: ["#39445c", "#556270", "#6b7d6f"], ground: ["#3f6b30", "#335728", "#27451e"], far: "#354f33", mid: "#243d22", clouds: 8, cloud: "rgba(74,84,102,.97)", cloudShade: "rgba(48,56,74,.97)", rain: 130, lightning: true, celestial: "none" },
+        sunset: { sky: ["#6b5b9e", "#e86a7a", "#ffb347"], ground: ["#6a9a44", "#527a34", "#3d5e27"], far: "#5a7d3d", mid: "#3d652c", clouds: 4, cloud: "rgba(255,196,165,.94)", cloudShade: "rgba(232,140,130,.9)", rain: 0, lightning: false, celestial: "sunset" },
+        night:  { sky: ["#0b1e3f", "#1a365d", "#2a4a3a"], ground: ["#335c2e", "#274a23", "#1e3a1b"], far: "#1e4023", mid: "#162e1a", clouds: 2, cloud: "rgba(70,90,120,.55)", cloudShade: "rgba(40,58,88,.55)", rain: 0, lightning: false, celestial: "moon" }
+      };
+      var currentWeather = "sunny";
+      var weatherRain = [];   // {rx, ry, speed, len} — positions derived from the clock in draw, never simulated
+      var weatherClouds = []; // {rx, ry, s}
+      var weatherStars = [];  // {rx, ry, r, ph}
+      var weatherFlash = { next: 0, until: 0, x: 0 };
+      for (var wsi = 0; wsi < 80; wsi++) {
+        weatherStars.push({ rx: Math.random(), ry: Math.random() * 0.55, r: 0.9 + Math.random() * 1.5, ph: Math.random() * 6.28 });
+      }
+      function buildGradients() {
+        var def = WEATHER_DEFS[currentWeather] || WEATHER_DEFS.sunny;
+        skyGrad = ctx.createLinearGradient(0, 0, 0, Math.max(1, groundY));
+        skyGrad.addColorStop(0, def.sky[0]);
+        skyGrad.addColorStop(0.6, def.sky[1]);
+        skyGrad.addColorStop(1, def.sky[2]);
+        groundGrad = ctx.createLinearGradient(0, groundY, 0, Math.max(groundY + 1, H));
+        groundGrad.addColorStop(0, def.ground[0]);
+        groundGrad.addColorStop(0.25, def.ground[1]);
+        groundGrad.addColorStop(1, def.ground[2]);
+      }
+      function seedWeatherFx() {
+        var def = WEATHER_DEFS[currentWeather] || WEATHER_DEFS.sunny;
+        weatherRain = [];
+        for (var ri2 = 0; ri2 < def.rain; ri2++) {
+          weatherRain.push({ rx: Math.random(), ry: Math.random(), speed: 0.55 + Math.random() * 0.35, len: 11 + Math.random() * 9 });
+        }
+        weatherClouds = [];
+        for (var ci2 = 0; ci2 < def.clouds; ci2++) {
+          weatherClouds.push({ rx: Math.random(), ry: 14 + Math.random() * 78, s: 0.65 + Math.random() * 0.8 });
+        }
+        weatherFlash.next = 0; weatherFlash.until = 0;
+      }
+      function setWeather(name) {
+        if (!WEATHER_DEFS[name]) name = "sunny";
+        currentWeather = name;
+        buildGradients();
+        seedWeatherFx();
+      }
+      function randomizeWeather(reason) {
+        var next = currentWeather;
+        while (next === currentWeather) {
+          next = WEATHER_NAMES[Math.floor(Math.random() * WEATHER_NAMES.length)];
+        }
+        setWeather(next);
+        logEvent("Weather changed to " + next + " (" + reason + ").");
+      }
+      function drawWeatherCloud(x, y, s, def) {
+        ctx.fillStyle = def.cloud;
+        ctx.beginPath();
+        ctx.ellipse(x, y, 34 * s, 15 * s, 0, 0, 6.29);
+        ctx.ellipse(x - 24 * s, y + 4 * s, 22 * s, 11 * s, 0, 0, 6.29);
+        ctx.ellipse(x + 25 * s, y + 4 * s, 24 * s, 12 * s, 0, 0, 6.29);
+        ctx.ellipse(x + 2 * s, y - 9 * s, 22 * s, 13 * s, 0, 0, 6.29);
+        ctx.fill();
+        ctx.fillStyle = def.cloudShade;
+        ctx.beginPath();
+        ctx.ellipse(x, y + 8 * s, 30 * s, 8 * s, 0, 0, 6.29);
+        ctx.fill();
+      }
+      // Sky dressing drawn over the sky gradient, behind the trees:
+      // sun / low sunset sun / moon + stars, then drifting clouds.
+      function drawWeatherSky(tNow) {
+        var def = WEATHER_DEFS[currentWeather] || WEATHER_DEFS.sunny;
+        if (def.celestial === "sun") {
+          ctx.fillStyle = "rgba(255,236,150,.35)";
+          ctx.beginPath(); ctx.arc(W - 90, 62, 48, 0, 6.29); ctx.fill();
+          ctx.fillStyle = "rgba(255,236,150,.95)";
+          ctx.beginPath(); ctx.arc(W - 90, 62, 30, 0, 6.29); ctx.fill();
+        } else if (def.celestial === "dimSun") {
+          ctx.fillStyle = "rgba(255,240,180,.28)";
+          ctx.beginPath(); ctx.arc(W - 90, 62, 44, 0, 6.29); ctx.fill();
+          ctx.fillStyle = "rgba(255,240,180,.45)";
+          ctx.beginPath(); ctx.arc(W - 90, 62, 28, 0, 6.29); ctx.fill();
+        } else if (def.celestial === "sunset") {
+          var sunY = Math.max(96, groundY - 120);
+          ctx.fillStyle = "rgba(255,140,60,.35)";
+          ctx.beginPath(); ctx.arc(W - 120, sunY, 62, 0, 6.29); ctx.fill();
+          ctx.fillStyle = "#ff8c3a";
+          ctx.beginPath(); ctx.arc(W - 120, sunY, 40, 0, 6.29); ctx.fill();
+          ctx.fillStyle = "#ffb347";
+          ctx.beginPath(); ctx.arc(W - 120, sunY - 6, 31, 0, 6.29); ctx.fill();
+        } else if (def.celestial === "moon") {
+          for (var st = 0; st < weatherStars.length; st++) {
+            var star = weatherStars[st];
+            ctx.fillStyle = "rgba(255,255,255," + (0.45 + 0.4 * Math.abs(Math.sin(tNow * 1.4 + star.ph))) + ")";
+            ctx.beginPath(); ctx.arc(star.rx * W, star.ry * groundY, star.r, 0, 6.29); ctx.fill();
+          }
+          ctx.fillStyle = "rgba(220,232,255,.22)";
+          ctx.beginPath(); ctx.arc(W - 90, 62, 42, 0, 6.29); ctx.fill();
+          ctx.fillStyle = "#f4ead0";
+          ctx.beginPath(); ctx.arc(W - 90, 62, 26, 0, 6.29); ctx.fill();
+          ctx.fillStyle = def.sky[0];
+          ctx.beginPath(); ctx.arc(W - 79, 54, 21, 0, 6.29); ctx.fill();
+          ctx.fillStyle = "rgba(190,200,215,.5)";
+          ctx.beginPath(); ctx.arc(W - 99, 70, 4, 0, 6.29); ctx.arc(W - 84, 50, 3, 0, 6.29); ctx.fill();
+        }
+        // clouds drift slowly with time and scroll gently with the world
+        for (var cl = 0; cl < weatherClouds.length; cl++) {
+          var cd = weatherClouds[cl];
+          var span = W + 260;
+          var cx = ((cd.rx * span + tNow * 7 * cd.s - scrollFar * 0.06) % span + span) % span - 130;
+          drawWeatherCloud(cx, cd.ry, cd.s, def);
+        }
+      }
+      // Foreground weather, drawn last over the jungle scene (never over
+      // the DOM HUD): slanted rain streaks, and for stormy weather a
+      // brief lightning flash plus a jagged bolt. Positions come from
+      // the clock, so rain falls even on the title screen's jungle.
+      function drawWeatherForeground(tNow) {
+        var def = WEATHER_DEFS[currentWeather] || WEATHER_DEFS.sunny;
+        if (def.lightning) {
+          if (weatherFlash.next === 0) weatherFlash.next = tNow + 1.2 + Math.random() * 2.5;
+          if (tNow >= weatherFlash.next) {
+            weatherFlash.until = tNow + 0.14;
+            weatherFlash.next = tNow + 2 + Math.random() * 4;
+            weatherFlash.x = W * (0.15 + Math.random() * 0.7);
+          }
+          if (tNow < weatherFlash.until) {
+            ctx.fillStyle = "rgba(230,238,255,.28)";
+            ctx.fillRect(-20, -20, W + 40, H + 40);
+            ctx.strokeStyle = "rgba(255,255,210,.95)";
+            ctx.lineWidth = 3.5; ctx.lineCap = "round";
+            var bx = weatherFlash.x, by = -4;
+            ctx.beginPath(); ctx.moveTo(bx, by);
+            var segs = 5;
+            for (var sg = 1; sg <= segs; sg++) {
+              ctx.lineTo(bx + (sg % 2 === 0 ? -7 : 9), by + (groundY * 0.52 / segs) * sg);
+            }
+            ctx.stroke();
+          }
+        }
+        if (weatherRain.length) {
+          ctx.strokeStyle = currentWeather === "stormy" ? "rgba(200,225,255,.55)" : "rgba(190,220,250,.5)";
+          ctx.lineWidth = 2; ctx.lineCap = "round";
+          ctx.beginPath();
+          for (var rd = 0; rd < weatherRain.length; rd++) {
+            var drop = weatherRain[rd];
+            var fall = (drop.ry + tNow * drop.speed) % 1;
+            var dy = fall * (H + 40) - 20;
+            var dx = drop.rx * (W + 120) - fall * 55;
+            ctx.moveTo(dx, dy);
+            ctx.lineTo(dx - 3, dy + drop.len);
+          }
+          ctx.stroke();
+        }
+      }
+
+      function resize() {
+        var r = stage.getBoundingClientRect();
+        W = r.width; H = r.height;
+        groundY = H - Math.max(64, H * 0.16);
+        // Pixel budget: a full DPR-2 canvas on a big tablet is a large
+        // offscreen surface kept alive every frame. Under memory pressure
+        // mobile webviews kill/reload pages without firing any JS error —
+        // one unproven but plausible suspect in the silent reloads — so
+        // the backing store is capped (~2.4M px) and steps down first.
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+        while (dpr > 1 && Math.round(W * dpr) * Math.round(H * dpr) > 2400000) dpr -= 0.25;
+        canvas.width = Math.round(W * dpr);
+        canvas.height = Math.round(H * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        // Gradients are cached here and reused every frame — creating two
+        // fresh LinearGradients per frame at 60fps was pure churn. The
+        // colors come from the current jungle weather (buildGradients
+        // also runs on every weather change, between resizes).
+        buildGradients();
+      }
+      window.addEventListener("resize", resize);
+
+      /* ---------------- runner & world ---------------- */
+      var runner = { x: 0, y: 0, vy: 0, jumping: false, runPhase: 0, dead: false };
+      var obstacles = [];
+      var snakes = [];
+      var particles = [];
+      var spawnIn = 1.2;
+      var snakeSpawnIn = 4.5;
+      /* Castle door transition: at :02 with the castle armed, a big castle door
+         appears in the jungle ahead of the runner, the runner runs up to
+         it, the doors swing open with golden light, he runs through — and
+         the scene cuts straight to the castle snake fight. No popup, no
+         button press in between. */
+      var door = { active: false, t: 0, x: 0, open: 0, through: 0, chimed: false };
+      var scrollFar = 0, scrollMid = 0, scrollNear = 0;
+
+      var OB_TYPES = [
+        { kind: "log", w: 64, h: 26 },
+        { kind: "rock", w: 44, h: 34 },
+        { kind: "puddle", w: 78, h: 10 },
+        { kind: "stump", w: 40, h: 36 },
+        { kind: "log", w: 88, h: 26 },
+        { kind: "mushroom", w: 52, h: 30 },
+        { kind: "coconuts", w: 56, h: 30 },
+        { kind: "vine", w: 84, h: 16 },
+        { kind: "branch", w: 72, h: 30 },
+        { kind: "rock", w: 58, h: 42 }
+      ];
+
+      function resetRun(full) {
+        if (full) {
+          S.time = START_TIME; S.loops = 1; S.bonuses = 0; S.elapsed = 0;
+        }
+        S.distance = 0;
+        S.armed = false;
+        timerShell.classList.remove("armed");
+        S.gap = 150;
+        S.speed = 265 + (S.loops - 1) * 9;
+        S.runT = 0;
+        S.stumbleT = 0; S.invulnT = 0; S.shake = 0; S.flash = 0;
+        obstacles = []; particles = []; snakes = [];
+        door.active = false; door.open = 0; door.through = 0;
+        spawnIn = 1.1;
+        snakeSpawnIn = 4.5;
+        runner.y = 0; runner.vy = 0; runner.jumping = false; runner.dead = false;
+      }
+
+      function spawnObstacle() {
+        var t = OB_TYPES[Math.floor(Math.random() * OB_TYPES.length)];
+        obstacles.push({ kind: t.kind, w: t.w, h: t.h, x: W + 60, passed: false });
+        // More obstacles, more often than before — and denser every loop.
+        var base = Math.max(0.52, 1.02 - S.loops * 0.04);
+        spawnIn = base + Math.random() * 0.55;
+      }
+
+      /* Vine snakes: they hang from the vines up top, sway, then drop,
+         strike low at the runner, and retract back up — and can drop
+         again while they're still on screen. A strike is only ever a
+         stumble (same as any obstacle): it never ends the run and the
+         monsters still can never catch the runner. The head strikes
+         LOW, so a jump clears it, and the warn shake + ground shadow
+         give the player time to jump or sprint past with RUN. */
+      var SNAKE_REST_LEN = 74;
+      function spawnSnake() {
+        snakes.push({
+          x: W + 70,
+          len: SNAKE_REST_LEN,
+          state: "hang",   // hang | warn | drop | strike | retract
+          t: 0,
+          cool: 0,         // hang time required before it can strike again
+          hitDone: false,
+          hissed: false,
+          sway: Math.random() * 6.28
+        });
+        snakeSpawnIn = 7.5 + Math.random() * 5;
+      }
+
+      function burst(x, y, n, color, spread) {
+        if (particles.length > 420) particles.splice(0, particles.length - 420);
+        for (var i = 0; i < n; i++) {
+          particles.push({
+            x: x, y: y,
+            vx: (Math.random() - 0.5) * (spread || 160),
+            vy: -Math.random() * 160 - 30,
+            life: 0.5 + Math.random() * 0.4,
+            max: 0.9,
+            r: 2 + Math.random() * 3.5,
+            color: color
+          });
+        }
+      }
+
+      /* ---------------- audio (all synthesized) ---------------- */
+      var AC = null, musicTimer = null, musicStep = 0, soundOn = true, noiseBuf = null;
+      function audio() {
+        if (!AC) {
+          try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; }
+        }
+        if (AC && AC.state === "suspended") {
+          try {
+            var rp = AC.resume();
+            if (rp && rp.catch) rp.catch(function () {});
+          } catch (e) {}
+        }
+        return AC;
+      }
+      function tone(freq, dur, type, vol, when, slideTo) {
+        var ac = audio(); if (!ac || !soundOn) return;
+        try {
+          var t = ac.currentTime + (when || 0);
+          var o = ac.createOscillator(), g = ac.createGain();
+          o.type = type || "sine";
+          o.frequency.setValueAtTime(freq, t);
+          if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+          g.gain.setValueAtTime(vol || 0.15, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+          o.connect(g); g.connect(ac.destination);
+          o.start(t); o.stop(t + dur + 0.02);
+        } catch (e) { /* audio must never crash the game */ }
+      }
+      function noiseBurst(dur, vol, when, freq) {
+        var ac = audio(); if (!ac || !soundOn) return;
+        try {
+          var t = ac.currentTime + (when || 0);
+          // One shared noise buffer, created once — the old code allocated a
+          // fresh AudioBuffer on every single noise hit (several per second
+          // from the music shaker alone, plus every RUN tap / stumble).
+          if (!noiseBuf) {
+            var len = Math.floor(ac.sampleRate * 0.5);
+            noiseBuf = ac.createBuffer(1, len, ac.sampleRate);
+            var d = noiseBuf.getChannelData(0);
+            for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+          }
+          var src = ac.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+          var f = ac.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = freq || 900;
+          var g = ac.createGain();
+          g.gain.setValueAtTime(vol || 0.2, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+          src.connect(f); f.connect(g); g.connect(ac.destination);
+          src.start(t); src.stop(t + dur + 0.02);
+        } catch (e) { /* audio must never crash the game */ }
+      }
+      function sfxJump() { tone(300, 0.18, "square", 0.07, 0, 640); }
+      function sfxLand() { noiseBurst(0.07, 0.08, 0, 700); }
+      function sfxStumble() {
+        noiseBurst(0.16, 0.25, 0, 500);
+        tone(160, 0.25, "sawtooth", 0.14, 0, 70);
+        tone(90, 0.4, "sawtooth", 0.12, 0.05, 55); // monster growl
+      }
+      function sfxLoop() {
+        var notes = [523, 659, 784, 1047];
+        for (var i = 0; i < notes.length; i++) tone(notes[i], 0.22, "triangle", 0.16, i * 0.09);
+        noiseBurst(0.35, 0.06, 0, 3000);
+      }
+      function sfxRoar() {
+        tone(140, 0.7, "sawtooth", 0.22, 0, 48);
+        tone(196, 0.6, "sawtooth", 0.15, 0.08, 60);
+        noiseBurst(0.5, 0.2, 0, 800);
+      }
+      function sfxWin() {
+        var seq = [523, 523, 523, 659, 784, 1047, 784, 1047];
+        for (var i = 0; i < seq.length; i++) tone(seq[i], 0.3, "square", 0.12, i * 0.16);
+        for (var j = 0; j < 5; j++) noiseBurst(0.2, 0.1, j * 0.32, 4000);
+      }
+      // Cheerful jungle groove: marimba-ish plucks + soft shaker.
+      var MELODY = [392, 440, 523, 440, 392, 330, 392, 440, 523, 587, 523, 440, 392, 330, 294, 330];
+      var BASS = [196, 0, 147, 0, 165, 0, 196, 0];
+      function musicTick() {
+        if (!soundOn || (S.mode !== "playing" && S.mode !== "castle")) return;
+        var i = musicStep % 16;
+        if (MELODY[i]) tone(MELODY[i], 0.16, "triangle", 0.055);
+        if (i % 2 === 0 && BASS[i / 2]) tone(BASS[i / 2], 0.22, "sine", 0.09);
+        if (i % 2 === 1) noiseBurst(0.03, 0.018, 0, 6000);
+        musicStep++;
+      }
+      function startMusic() {
+        if (musicTimer) return;
+        musicStep = 0;
+        musicTimer = setInterval(musicTick, 150);
+      }
+      function stopMusic() {
+        if (musicTimer) { clearInterval(musicTimer); musicTimer = null; }
+      }
+
+      /* ---------------- overlays / flow ---------------- */
+      function show(el) { el.hidden = false; }
+      function hide(el) { el.hidden = true; }
+      function hideAllOverlays() {
+        hide(splashScreen); hide(titleScreen); hide(howScreen); hide(menuScreen); hide(winScreen); hide(gameOverScreen); hide(debugScreen);
+      }
+
+      // Splash title picture -> Home Screen. Enter Game does NOT start
+      // a run: it only reveals the Home Screen (START GAME /
+      // HOW TO PLAY). The win screen's Start Over uses
+      // toTitle(), which lands on this same Home Screen — never back
+      // on the splash picture.
+      function enterHome() {
+        audio();
+        S.mode = "title";
+        // Fresh Home Screen arrival: the hidden title tap starts from
+        // zero and the castle starts disarmed, every single time.
+        S.castlePending = false;
+        resetTitleTap();
+        hideAllOverlays(); show(titleScreen);
+        hud.hidden = true; jumpBtn.disabled = true; runBtn.disabled = true;
+        logEvent("Enter Game tapped — title picture to Home Screen.");
+      }
+
+      function toTitle() {
+        S.mode = "title";
+        S.pauseReturn = null;
+        S.castlePending = false;
+        // Back on the Home Screen (Start Over, QUIT TO TITLE, menu
+        // return): the hidden title tap is fully re-armed from scratch —
+        // counter at zero, nothing left "used up" — so tapping LOOP GAME
+        // 5 times works again on every visit, not just the first.
+        resetTitleTap();
+        C.active = false;
+        castleHud.hidden = true;
+        setCastleControls(false);
+        stopMusic();
+        hideAllOverlays(); show(titleScreen);
+        hud.hidden = true; jumpBtn.disabled = true; runBtn.disabled = true;
+        resetRun(true);
+      }
+
+      function startGame() {
+        audio();
+        C.active = false;
+        C.won = false;
+        castleHud.hidden = true;
+        setCastleControls(false);
+        S.pauseReturn = null;
+        resetRun(true);
+        // Fresh run start: the timer just reset to its start value, so
+        // the jungle weather changes to a new random one.
+        randomizeWeather("fresh run start");
+        hideAllOverlays();
+        hud.hidden = false; jumpBtn.disabled = false; runBtn.disabled = false;
+        S.mode = "playing";
+        startMusic();
+        // castlePending is deliberately NOT cleared here: a castle armed
+        // before the run starts must trigger at :02 during this run.
+        // No castle announcement banner on screen: when the castle is armed the
+        // run starts silently — the door still appears at :02.
+        if (!S.castlePending) showBanner("RUN! 🏃", false, 1400);
+        logEvent(S.castlePending ? "Game started — castle armed, opens at :02." : "Game started.");
+      }
+
+      function pauseGame() {
+        if (S.mode !== "playing" && S.mode !== "castle") return;
+        S.pauseReturn = S.mode;
+        S.mode = "paused";
+        stopMusic();
+        hideAllOverlays(); show(menuScreen);
+      }
+
+      function resumeGame() {
+        hideAllOverlays();
+        S.mode = (S.pauseReturn === "castle") ? "castle" : "playing";
+        S.pauseReturn = null;
+        startMusic();
+      }
+
+      /* Hidden Home Screen title tap — 5 rapid taps on the Home
+         Screen's LOOP GAME title arm the castle and go straight into
+         jungle gameplay, exactly as a correct code used to: fresh run,
+         timer counting, RUN and JUMP live, castle door at :02, and no
+         castle banner in gameplay (startGame stays silent when armed).
+         Deliberately not mentioned in How to Play or in any menu.
+         REPEATABLE, never one-time: every arrival on the Home Screen
+         (enterHome / toTitle / How-to-Play back) calls resetTitleTap()
+         and clears castlePending, so a fresh 5-tap sequence works on
+         the second, third, and every later visit exactly as the first.
+         Taps are counted on pointerdown, NOT click: the no-zoom guard
+         below preventDefaults a repeated tap's touchend (same target
+         within 350ms), which on touch devices cancels the synthesized
+         click — rapid taps on the title would silently stop counting.
+         pointerdown fires before that guard can interfere, for touch,
+         mouse, and pen alike. */
+      var titleTapCount = 0;
+      var titleTapLast = 0;
+      function resetTitleTap() {
+        titleTapCount = 0;
+        titleTapLast = 0;
+      }
+      function onHomeTitleTap() {
+        if (S.mode !== "title" || titleScreen.hidden) return;
+        var now = Date.now();
+        if (now - titleTapLast > 1500) titleTapCount = 0;
+        titleTapLast = now;
+        titleTapCount += 1;
+        if (titleTapCount < 5) return;
+        titleTapCount = 0;
+        titleTapLast = 0;
+        S.castlePending = true;
+        logEvent("Castle armed — straight into gameplay, door at :02.");
+        tone(784, 0.16, "triangle", 0.12);
+        tone(1047, 0.22, "triangle", 0.12, 0.12);
+        startGame();
+      }
+
+      function winGame() {
+        S.mode = "won";
+        logEvent("Castle snake defeated with 50 rock hits — YOU WON.");
+        stopMusic();
+        C.active = false;
+        castleHud.hidden = true;
+        setCastleControls(false);
+        hideAllOverlays(); show(winScreen);
+        jumpBtn.disabled = true; runBtn.disabled = true;
+        var mins = Math.floor(S.elapsed / 60), secs = Math.floor(S.elapsed % 60);
+        winStats.textContent =
+          "🐍 You beat the castle snake with " + C.fired + " rocks fired and " +
+          C.energy + " energy to spare! • You survived " + S.loops + (S.loops === 1 ? " loop" : " loops") +
+          " • ran " + Math.floor(S.distance) + "m • escaped after " +
+          mins + "m " + (secs < 10 ? "0" : "") + secs + "s in the loop";
+        sfxWin();
+        confettiBurst();
+      }
+
+      function confettiBurst() {
+        var colors = ["#ffd34d", "#7dff8a", "#ff5d43", "#4dc3ff", "#ff8ad8"];
+        for (var i = 0; i < 90; i++) {
+          particles.push({
+            x: Math.random() * W, y: -20 - Math.random() * H * 0.4,
+            vx: (Math.random() - 0.5) * 60,
+            vy: 90 + Math.random() * 160,
+            life: 2.4 + Math.random(), max: 3.4,
+            r: 3 + Math.random() * 4,
+            color: colors[i % colors.length],
+            confetti: true, rot: Math.random() * 6.28
+          });
+        }
+      }
+
+      /* ============================================================
+         CASTLE BOSS FIGHT — the hidden title tap arms it, and the fight
+         is entered when the jungle timer reaches :02 (see update()).
+         Slingshot + rocks: 50 hits beat the two-headed snake. Energy bar lives
+         here only: 5 segments, 1 lost per landed strike. Both heads
+         telegraph together (rear, hiss, "!" + danger ring) before every
+         strike; DODGE or move away and the strike misses. Lose all
+         5 energy and the Game Over screen pops up — Start Over there
+         goes to the Home Screen.
+         ============================================================ */
+      function setCastleControls(on) {
+        if (on) {
+          runBtn.textContent = "DODGE";
+          jumpBtn.textContent = "FIRE 🪨";
+          if (hintLine) hintLine.textContent = "FIRE rocks at the snake — 50 hits wins! Hit DODGE (or move ◀ ▶) when it rears back!";
+        } else {
+          runBtn.textContent = "RUN";
+          jumpBtn.textContent = "JUMP";
+          if (hintLine) hintLine.textContent = hintDefault;
+          runBtn.classList.remove("active");
+        }
+      }
+
+      function renderEnergy() {
+        if (!energyBarEl) return;
+        var kids = energyBarEl.children;
+        for (var i = 0; i < kids.length; i++) {
+          var cls = "eseg";
+          if (i >= C.energy) cls += " off";
+          else if (C.energy <= 2) cls += " low";
+          else if (C.energy === 3) cls += " mid";
+          kids[i].className = cls;
+        }
+      }
+
+      function castlePlayerX() { return W * 0.30 + C.playerOff; }
+
+      function castleSnakeHead() {
+        var tNow = performance.now() / 1000;
+        var hx = W * 0.70 + Math.sin(tNow * 1.7) * 8;
+        var hy = groundY - 150 + Math.sin(tNow * 2.3) * 6;
+        if (C.snakeState === "warn") {
+          hx = W * 0.735 + (Math.random() - 0.5) * 7;
+          hy = groundY - 188;
+        } else if (C.snakeState === "strike") {
+          var p = Math.min(1, C.snakeT / 0.10); // strike lunge: 0.15s -> 0.10s (1.5x faster)
+          hx = hx + (C.strikeX - hx) * p;
+          hy = hy + ((groundY - 44) - hy) * p;
+        } else if (C.snakeState === "recover") {
+          hx = W * 0.715; hy = groundY - 128;
+        } else if (C.snakeState === "dying") {
+          hx = W * 0.68; hy = groundY - 62 + Math.min(1, C.snakeT) * 26;
+        }
+        if (C.hurtT > 0) hx += (Math.random() - 0.5) * 9;
+        return { x: hx, y: hy };
+      }
+
+      // Two heads, one body: both heads ride the single boss position
+      // from castleSnakeHead() with a clear side-by-side spread, so
+      // they rear together in warn, lunge together in strike (landing
+      // either side of the single strikeX — still ONE attack, still
+      // exactly 1 energy if it lands), and fall together when dying.
+      function castleSnakeHeads() {
+        var base = castleSnakeHead();
+        var tNow = performance.now() / 1000;
+        var spreadX = 46;
+        if (C.snakeState === "strike") spreadX = 29;
+        else if (C.snakeState === "warn") spreadX = 48;
+        var sway1 = Math.sin(tNow * 2.1) * 3;
+        var sway2 = Math.cos(tNow * 1.8 + 1.3) * 3;
+        return [
+          { x: base.x - spreadX, y: base.y + 10 + sway1 },
+          { x: base.x + spreadX, y: base.y - 20 + sway2 }
+        ];
+      }
+
+      function resetCastle() {
+        C.energy = 5; C.hits = 0; C.fired = 0;
+        C.snakeState = "idle"; C.snakeT = 0;
+        C.idleFor = 1.0; // strike interval base: 1.5s -> 1.0s (shortened by 1/3)
+        C.strikeX = 0; C.strikeHitDone = true;
+        C.playerOff = 0; C.playerTarget = 0;
+        C.dodgeT = 0; C.fireCd = 0; C.invulnT = 0;
+        C.flashT = 0; C.hurtT = 0; C.overT = 0; C.won = false;
+        C.rocks = [];
+        renderEnergy();
+        if (castleHitsEl) castleHitsEl.textContent = "0";
+        if (castleFiredEl) castleFiredEl.textContent = "0";
+        if (castleWarnEl) castleWarnEl.classList.remove("show");
+      }
+
+      function enterCastleViaDoor() {
+        door.active = true;
+        door.t = 0; door.open = 0; door.through = 0; door.chimed = false;
+        door.x = runner.x + Math.min(430, Math.max(300, W * 0.5));
+        S.mode = "door";
+        jumpBtn.disabled = true; runBtn.disabled = true;
+        timerNum.textContent = Math.ceil(Math.max(0, S.time));
+        logEvent("Timer reached :02 with the castle armed — a castle door appeared in the jungle ahead of the runner.");
+        tone(196, 0.35, "triangle", 0.12);
+        tone(147, 0.45, "triangle", 0.10, 0.14);
+      }
+
+      function updateDoor(dt) {
+        S.elapsed += dt;
+        door.t += dt;
+        var spd = S.speed;
+        scrollFar += spd * 0.18 * dt;
+        scrollMid += spd * 0.45 * dt;
+        scrollNear += spd * dt;
+        runner.runPhase += dt * (spd / 26);
+        if (door.x > runner.x + 105) {
+          // The door stands in the path ahead — the runner closes on it
+          // as the world scrolls past.
+          door.x -= spd * dt;
+          if (door.x < runner.x + 105) door.x = runner.x + 105;
+        } else if (door.open < 1) {
+          // Reached it: the doors swing open onto golden light.
+          door.open = Math.min(1, door.open + dt * 1.6);
+          if (door.open >= 1 && !door.chimed) {
+            door.chimed = true;
+            tone(784, 0.16, "triangle", 0.10);
+            tone(1047, 0.24, "triangle", 0.10, 0.10);
+            burst(door.x, groundY - 110, 14, "#ffd34d", 200);
+          }
+        } else {
+          // Through the doorway — then straight into the castle fight.
+          door.through = Math.min(1, door.through + dt * 1.4);
+          if (door.through >= 1) { finishDoorToCastle(); return; }
+        }
+        if (Math.random() < 0.35) {
+          particles.push({
+            x: runner.x - 12 + Math.random() * 10, y: groundY - 2,
+            vx: -40 - Math.random() * 40, vy: -20 - Math.random() * 30,
+            life: 0.4, max: 0.4, r: 2 + Math.random() * 2.5, color: "#d8c98a"
+          });
+        }
+        stepParticles(dt, false);
+        if (S.shake > 0) S.shake = Math.max(0, S.shake - dt * 22);
+      }
+
+      function finishDoorToCastle() {
+        door.active = false;
+        logEvent("Runner went through the castle door — straight into the snake fight (no popup).");
+        startCastleFight();
+      }
+
+      function startCastleFight() {
+        audio();
+        resetCastle();
+        C.active = true;
+        hideAllOverlays();
+        S.mode = "castle";
+        S.pauseReturn = null;
+        hud.hidden = true;
+        castleHud.hidden = false;
+        jumpBtn.disabled = false; runBtn.disabled = false;
+        setCastleControls(true);
+        startMusic();
+        showBanner("🏰 BEAT THE SNAKE! 🐍", false, 1600);
+        logEvent("Castle snake fight started — 50 rock hits to win, 5 energy.");
+      }
+
+      // Castle lose: stop the fight and pop up the Game Over screen.
+      // Its Start Over button uses toTitle() — the same Home Screen the
+      // win screen's Start Over uses — never a fresh jungle run.
+      function showGameOver() {
+        if (S.mode === "gameover") return;
+        S.mode = "gameover";
+        S.pauseReturn = null;
+        logEvent("Castle snake fight lost — struck 5 times. Game Over screen shown.");
+        stopMusic();
+        C.active = false;
+        C.won = false;
+        castleHud.hidden = true;
+        hud.hidden = true;
+        setCastleControls(false);
+        if (castleWarnEl) castleWarnEl.classList.remove("show");
+        banner.classList.remove("show");
+        if (bannerTimer) { clearTimeout(bannerTimer); bannerTimer = null; }
+        hideAllOverlays(); show(gameOverScreen);
+        jumpBtn.disabled = true; runBtn.disabled = true;
+      }
+
+      function doFire() {
+        if (S.mode !== "castle" || C.won) return;
+        if (C.fireCd > 0) return;
+        C.fireCd = 0.22;
+        C.fired += 1;
+        if (castleFiredEl) castleFiredEl.textContent = C.fired;
+        // Rocks alternate between the two heads — both are the one boss.
+        var headsAim = castleSnakeHeads();
+        var head = headsAim[C.fired % 2];
+        var px = castlePlayerX();
+        C.rocks.push({
+          sx: px + 24, sy: groundY - 60,
+          tx: head.x, ty: head.y,
+          x: px + 24, y: groundY - 60,
+          t: 0, dur: 0.27
+        });
+        // slingshot snap: quick slide + twang
+        tone(240, 0.14, "square", 0.07, 0, 90);
+        noiseBurst(0.06, 0.10, 0, 2600);
+      }
+
+      function doDodge() {
+        if (S.mode !== "castle") return;
+        if (C.dodgeT > 0) return;
+        C.dodgeT = 0.65;
+        // dash AWAY from wherever you're standing: flip to the other side
+        C.playerTarget = (C.playerOff < 30) ? 165 : -135;
+        tone(300, 0.16, "sine", 0.09, 0, 700);
+        noiseBurst(0.14, 0.08, 0, 1800);
+        burst(castlePlayerX(), groundY - 6, 6, "#cfc4ff", 130);
+      }
+
+      function castlePlayerStruck() {
+        C.energy -= 1;
+        C.flashT = 0.5;
+        S.shake = 12;
+        renderEnergy();
+        sfxStumble();
+        tone(110, 0.5, "sawtooth", 0.18, 0, 50);
+        burst(castlePlayerX(), groundY - 40, 14, "#ff6b57", 240);
+        logEvent("Castle snake strike LANDED — energy now " + C.energy + "/5.");
+        if (C.energy <= 0) {
+          sfxRoar();
+          showGameOver();
+        } else {
+          showBanner("🐍 STRUCK! ENERGY " + C.energy + " LEFT!", true, 1300);
+        }
+      }
+
+      function updateCastle(dt) {
+        if (C.fireCd > 0) C.fireCd -= dt;
+        if (C.dodgeT > 0) C.dodgeT -= dt;
+        if (C.invulnT > 0) C.invulnT -= dt;
+        if (C.flashT > 0) C.flashT -= dt;
+        if (C.hurtT > 0) C.hurtT -= dt;
+        if (S.shake > 0) S.shake = Math.max(0, S.shake - dt * 22);
+        S.elapsed += dt;
+
+        if (C.won) {
+          // dying-snake pause, then the win screen — timed here in the
+          // update loop (not setTimeout) so pausing can't strand it
+          C.winT += dt;
+          C.snakeT += dt;
+          stepParticles(dt, false);
+          if (C.winT >= 1.4) winGame();
+          return;
+        }
+
+        /* player movement: ◀ ▶ / A D held keys glide, dodge snaps */
+        var moveSpd = C.dodgeT > 0 ? 620 : 300;
+        if (keysHeld.ArrowLeft || keysHeld.KeyA) C.playerTarget -= 300 * dt;
+        if (keysHeld.ArrowRight) C.playerTarget += 300 * dt;
+        var minOff = -W * 0.20, maxOff = W * 0.34;
+        if (C.playerTarget < minOff) C.playerTarget = minOff;
+        if (C.playerTarget > maxOff) C.playerTarget = maxOff;
+        var diff = C.playerTarget - C.playerOff;
+        var step = moveSpd * dt;
+        C.playerOff += Math.abs(diff) < step ? diff : (diff > 0 ? step : -step);
+
+        /* rocks in flight */
+        for (var i = C.rocks.length - 1; i >= 0; i--) {
+          var rk = C.rocks[i];
+          rk.t += dt;
+          var p = Math.min(1, rk.t / rk.dur);
+          rk.x = rk.sx + (rk.tx - rk.sx) * p;
+          rk.y = rk.sy + (rk.ty - rk.sy) * p - Math.sin(p * 3.14159) * 34;
+          if (p >= 1) {
+            C.rocks.splice(i, 1);
+            if (C.snakeState !== "dying") {
+              C.hits += 1;
+              C.hurtT = 0.28;
+              if (castleHitsEl) castleHitsEl.textContent = C.hits;
+              tone(180, 0.1, "square", 0.12, 0, 70);
+              noiseBurst(0.09, 0.16, 0, 900);
+              burst(rk.x, rk.y, 9, "#ffd34d", 200);
+              logEvent("Rock hit the castle snake — " + C.hits + "/50.");
+              if (C.hits >= C.needed) {
+                C.won = true;
+                C.winT = 0;
+                C.snakeState = "dying"; C.snakeT = 0;
+                showBanner("💥 50 HITS! THE SNAKE IS DOWN! 💥", false, 1500);
+                sfxRoar();
+              }
+            }
+          }
+        }
+
+        /* snake brain */
+        C.snakeT += dt;
+        if (C.snakeState === "idle") {
+          castleWarnEl.classList.remove("show");
+          if (C.snakeT >= C.idleFor) {
+            C.snakeState = "warn"; C.snakeT = 0;
+            noiseBurst(0.3, 0.10, 0, 5200); // hiss
+          }
+        } else if (C.snakeState === "warn") {
+          castleWarnEl.classList.add("show");
+          if (C.snakeT >= 0.57) { // telegraph/warn: 0.85s -> 0.57s (0.85 / 1.5)
+            C.snakeState = "strike"; C.snakeT = 0;
+            C.strikeX = castlePlayerX(); // locked onto where you stand NOW
+            C.strikeHitDone = false;
+            castleWarnEl.classList.remove("show");
+            noiseBurst(0.12, 0.14, 0, 1200);
+          }
+        } else if (C.snakeState === "strike") {
+          if (!C.strikeHitDone && C.snakeT >= 0.10) { // hit lands when lunge completes: 0.15s -> 0.10s
+            C.strikeHitDone = true;
+            var pxNow = castlePlayerX();
+            if (C.dodgeT > 0) {
+              logEvent("Castle snake strike DODGED.");
+              burst(C.strikeX, groundY - 20, 8, "#b8a888", 160);
+            } else if (Math.abs(pxNow - C.strikeX) < 58 && C.invulnT <= 0) {
+              C.invulnT = 0.9;
+              castlePlayerStruck();
+            } else {
+              logEvent("Castle snake strike missed — player had moved.");
+              burst(C.strikeX, groundY - 14, 8, "#b8a888", 160);
+            }
+          }
+          if (C.snakeT >= 0.28) { C.snakeState = "recover"; C.snakeT = 0; } // strike phase: 0.42s -> 0.28s (0.42 / 1.5)
+        } else if (C.snakeState === "recover") {
+          if (C.snakeT >= 0.63) { // recover: 0.95s -> 0.63s (0.95 / 1.5)
+            C.snakeState = "idle"; C.snakeT = 0;
+            C.idleFor = Math.max(0.53, 1.0 - C.hits * 0.0233) + Math.random() * 0.33; // was Math.max(0.8, 1.5 - hits*0.035) + rand*0.5, all / 1.5
+          }
+        }
+        stepParticles(dt, false);
+      }
+
+      var bannerTimer = null;
+      function showBanner(text, bad, ms) {
+        banner.textContent = text;
+        banner.className = "banner" + (bad ? " bad" : "");
+        void banner.offsetWidth;
+        banner.classList.add("show");
+        if (bannerTimer) clearTimeout(bannerTimer);
+        bannerTimer = setTimeout(function () { banner.classList.remove("show"); }, ms || 2200);
+      }
+
+      /* ---------------- game logic ---------------- */
+      function doJump() {
+        if (S.mode !== "playing") return;
+        if (!runner.jumping) {
+          runner.jumping = true;
+          runner.vy = -Math.max(660, H * 1.28);
+          sfxJump();
+          burst(runner.x, groundY, 5, "#c9b458", 120);
+        }
+      }
+
+      // RUN button: a short burst of speed to pull away from the monsters.
+      // Hardened against rapid repeated taps (the 16:51 crash pattern — RUN
+      // taps ~1-2s apart, then a silent reload with no error logged): while a
+      // burst is already active, extra taps are a complete no-op — no burst
+      // stacking, no extra audio nodes, no extra log/storage churn.
+      var lastRunLogAt = 0;
+      function doRun() {
+        if (S.mode !== "playing") return;
+        if (S.runT > 0.25) return;
+        // Durable breadcrumbs, flushed SYNCHRONOUSLY (the normal log save
+        // is throttled): "RUN tap begin" hits storage before any RUN work
+        // happens, "RUN tap end" right after. If a future silent reload
+        // follows a RUN tap, the log will show whether the tap's own work
+        // completed — and the heartbeat/close-record pair shows how the
+        // page ended. (Investigation aid only; no cause is assumed.)
+        logEvent("RUN tap begin — gap=" + Math.round(S.gap) + " timer=" + Math.ceil(S.time) +
+          "s particles=" + particles.length + " obstacles=" + obstacles.length + ".");
+        flushLog();
+        S.runT = 1.6;
+        var now = Date.now();
+        if (now - lastRunLogAt > 3000) {
+          lastRunLogAt = now;
+          logEvent("RUN button used — speed burst.");
+        }
+        tone(500, 0.16, "square", 0.06, 0, 920);
+        burst(runner.x - 10, groundY - 8, 6, "#ffd34d", 140);
+        logEvent("RUN tap end — burst active, audio + particles done.");
+        flushLog();
+      }
+
+      // The heart of the loop: +25 seconds and the jingle. No on-screen
+      // banner is shown for the add — the timer bump, the jingle, and the
+      // +25s FOUND counter are the feedback. The debug log entry stays
+      // (hamburger menu only) for crash diagnostics.
+      // byTap = the player hit the timer; otherwise the loop adds it anyway.
+      function addBonus(byTap) {
+        S.time += 25;
+        S.loops += 1;
+        S.bonuses += 1;
+        S.armed = false;
+        timerShell.classList.remove("armed");
+        S.gap = Math.max(60, S.gap - 10);  // they inch closer every loop
+        S.speed += 9;
+        // Timer reset (+25, by tap or auto): the jungle weather changes
+        // to a new random one, different from the weather just shown.
+        randomizeWeather(byTap ? "timer +25 by tap" : "timer +25 auto-add");
+        logEvent(byTap ? "Timer +25 seconds added — player tapped the timer." : "Timer +25 seconds added — auto (the loop added it).");
+        sfxLoop();
+        timerNum.classList.remove("bump"); void timerNum.offsetWidth;
+        timerNum.classList.add("bump");
+        burst(runner.x + 30, groundY - 90, 16, "#7dff8a", 240);
+      }
+
+      function tapTimer() {
+        if (S.mode !== "playing") return;
+        if (S.armed) {
+          addBonus(true);
+        } else {
+          // Not loaded yet — a little nudge so the player knows it matters later.
+          timerShell.classList.remove("shake");
+          void timerShell.offsetWidth;
+          timerShell.classList.add("shake");
+          tone(220, 0.08, "square", 0.05);
+        }
+      }
+
+      function stumble() {
+        // Never-catch rule: when the monsters are extremely close they slow
+        // down, so a stumble at point-blank range loses only a little ground,
+        // and the gap is clamped so it can never reach the runner.
+        var loss = 58;
+        if (S.gap < GAP_CLOSE) loss *= 0.3;
+        S.gap = Math.max(GAP_MIN, S.gap - loss);
+        S.stumbleT = 0.55;
+        S.invulnT = 1.1;
+        S.shake = 9;
+        sfxStumble();
+        burst(runner.x + 16, groundY - 26, 12, "#8a6d3b", 220);
+      }
+
+      function update(dt) {
+        // confetti / ambient particles always drift on win screen
+        if (S.mode === "won") { stepParticles(dt, true); return; }
+        if (S.mode !== "playing") return;
+
+        var running = true;
+
+        if (running) {
+          /* --- THE TIMER. THE LOOP. --- */
+          S.elapsed += dt;
+          S.time -= dt;
+          /* --- CASTLE TRIGGER: exactly :02, checked FIRST — before the
+             timer can arm/auto-add the +25 (auto-add fires at :01) and
+             before it can reach 0. If the player tapped for +25 at 5s,
+             the timer jumped back up, so this simply fires on the NEXT
+             countdown to :02. --- */
+          if (S.castlePending && S.time <= 2) {
+            S.castlePending = false;
+            S.returnTo = "playing";
+            logEvent("Timer reached :02 with the castle armed — the castle door appears.");
+            enterCastleViaDoor();
+            return;
+          }
+          if (S.time <= 5 && !S.armed) {
+            // The +25 is loaded — timer lights up, begging to be tapped.
+            S.armed = true;
+            timerShell.classList.add("armed");
+            tone(880, 0.12, "triangle", 0.1);
+            tone(1175, 0.14, "triangle", 0.1, 0.1);
+          }
+          if (S.time <= 1 && S.armed) {
+            // No tap? Doesn't matter. The loop adds it anyway. It always does.
+            addBonus(false);
+          }
+          if (S.time < 0.1) S.time = 0.1; // the loop NEVER lets it touch zero
+
+          /* --- monster pressure --- */
+          if (S.stumbleT > 0) S.stumbleT -= dt;
+          if (S.invulnT > 0) S.invulnT -= dt;
+          if (S.runT > 0) S.runT -= dt;
+          if (S.stumbleT <= 0) S.gap = Math.min(S.gapMax, S.gap + (S.runT > 0 ? 30 : 7) * dt);
+
+          /* --- distance & scroll --- */
+          var spd = S.speed * (S.stumbleT > 0 ? 0.45 : 1) * (S.runT > 0 ? 1.6 : 1);
+          S.distance += spd * dt / 38;
+          scrollFar += spd * 0.18 * dt;
+          scrollMid += spd * 0.45 * dt;
+          scrollNear += spd * dt;
+
+          /* --- runner physics --- */
+          runner.runPhase += dt * (spd / 26);
+          if (runner.jumping) {
+            runner.vy += 2100 * dt;
+            runner.y += runner.vy * dt;
+            if (runner.y >= 0) {
+              runner.y = 0; runner.jumping = false; runner.vy = 0;
+              sfxLand();
+              burst(runner.x, groundY, 4, "#c9b458", 90);
+            }
+          }
+
+          /* --- obstacles --- */
+          spawnIn -= dt;
+          if (spawnIn <= 0) spawnObstacle();
+          for (var i = obstacles.length - 1; i >= 0; i--) {
+            var ob = obstacles[i];
+            ob.x -= spd * dt;
+            if (ob.x + ob.w < -40) { obstacles.splice(i, 1); continue; }
+            // collision: runner box vs obstacle box
+            var rx = runner.x - 14, rw = 30;
+            var ry = groundY + runner.y - 52, rh = 52;
+            var oy = groundY - ob.h;
+            if (S.invulnT <= 0 &&
+                rx < ob.x + ob.w - 6 && rx + rw > ob.x + 6 &&
+                ry + rh > oy + 4) {
+              stumble();
+              ob.passed = true;
+              obstacles.splice(i, 1);
+            }
+          }
+
+          /* --- vine snakes --- */
+          snakeSpawnIn -= dt;
+          if (snakeSpawnIn <= 0 && snakes.length < 2) spawnSnake();
+          var maxLen = groundY - 20;
+          for (var si = snakes.length - 1; si >= 0; si--) {
+            var sn = snakes[si];
+            sn.x -= spd * dt;
+            sn.t += dt;
+            if (sn.x < -70) { snakes.splice(si, 1); continue; }
+            if (sn.state === "hang") {
+              sn.len += (SNAKE_REST_LEN - sn.len) * Math.min(1, dt * 6);
+              if (sn.cool > 0) sn.cool -= dt;
+              // The runner is getting close — coil up and get ready.
+              if (sn.cool <= 0 && sn.x - runner.x < 250 && sn.x - runner.x > 20) {
+                sn.state = "warn"; sn.t = 0; sn.hissed = false;
+              }
+            } else if (sn.state === "warn") {
+              // Telegraph: head shakes, tongue out, hiss — jump or RUN now.
+              if (!sn.hissed) { sn.hissed = true; noiseBurst(0.28, 0.10, 0, 5200); }
+              if (sn.t >= 0.55) { sn.state = "drop"; sn.t = 0; sn.hitDone = false; }
+            } else if (sn.state === "drop") {
+              sn.len += (maxLen - sn.len) * Math.min(1, dt * 16);
+              if (sn.t >= 0.22) { sn.state = "strike"; sn.t = 0; sn.len = maxLen; }
+            } else if (sn.state === "strike") {
+              if (sn.t >= 0.38) { sn.state = "retract"; sn.t = 0; }
+            } else if (sn.state === "retract") {
+              sn.len += (SNAKE_REST_LEN - sn.len) * Math.min(1, dt * 7);
+              if (sn.t >= 0.55) {
+                sn.state = "hang"; sn.t = 0;
+                sn.cool = 1.5; // hangs a while, then can drop again
+                sn.len = SNAKE_REST_LEN;
+              }
+            }
+            // Collision: only the striking head, and only while it's low.
+            // It sits at ground level, so a jump (runner.y < -31) clears
+            // it; on the ground it connects — a stumble, nothing worse.
+            if (!sn.hitDone && (sn.state === "drop" || sn.state === "strike") &&
+                sn.len > groundY - 70 && S.invulnT <= 0) {
+              var headY = sn.len;
+              var srx = runner.x - 14, srw = 30;
+              var sry = groundY + runner.y - 52, srh = 52;
+              if (srx < sn.x + 15 && srx + srw > sn.x - 15 &&
+                  sry < headY + 15 && sry + srh > headY - 15) {
+                sn.hitDone = true;
+                logEvent("Snake strike — stumble.");
+                stumble();
+              }
+            }
+          }
+          // foot dust
+          if (!runner.jumping && Math.random() < 0.35) {
+            particles.push({
+              x: runner.x - 12 + Math.random() * 10, y: groundY - 2,
+              vx: -40 - Math.random() * 40, vy: -20 - Math.random() * 30,
+              life: 0.4, max: 0.4, r: 2 + Math.random() * 2.5, color: "#d8c98a"
+            });
+          }
+        }
+
+        stepParticles(dt, false);
+        if (S.shake > 0) S.shake = Math.max(0, S.shake - dt * 22);
+
+        /* --- HUD --- */
+        var t = Math.max(0, S.time);
+        timerNum.textContent = Math.ceil(t);
+        timerNum.classList.toggle("low", t <= 10.2 && S.mode === "playing");
+        loopCountEl.textContent = S.loops;
+        distCountEl.textContent = Math.floor(S.distance);
+        bonusCountEl.textContent = S.bonuses;
+        runBtn.classList.toggle("active", S.runT > 0);
+      }
+
+      function stepParticles(dt, gravityLight) {
+        if (particles.length > 500) particles.splice(0, particles.length - 500);
+        for (var i = particles.length - 1; i >= 0; i--) {
+          var p = particles[i];
+          p.life -= dt;
+          if (p.life <= 0) { particles.splice(i, 1); continue; }
+          p.vy += (p.confetti ? 60 : 620) * dt * (gravityLight ? 0.4 : 1);
+          p.x += p.vx * dt; p.y += p.vy * dt;
+          if (p.confetti) p.rot += dt * 4;
+        }
+      }
+
+      /* ---------------- drawing ---------------- */
+      function drawTree(x, baseY, s, hue) {
+        ctx.fillStyle = hue;
+        ctx.fillRect(x - 5 * s, baseY - 90 * s, 10 * s, 90 * s);
+        ctx.beginPath();
+        ctx.arc(x, baseY - 120 * s, 42 * s, 0, 6.29);
+        ctx.arc(x - 30 * s, baseY - 95 * s, 30 * s, 0, 6.29);
+        ctx.arc(x + 30 * s, baseY - 95 * s, 30 * s, 0, 6.29);
+        ctx.fill();
+      }
+
+      function drawMonster(x, baseY, s, bob, color, eyeColor) {
+        var y = baseY + Math.sin(bob) * 4 * s;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(s, s);
+        // body
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.ellipse(0, -34, 30, 36, 0, 0, 6.29);
+        ctx.fill();
+        // horns
+        ctx.fillStyle = "#e8e0c8";
+        ctx.beginPath();
+        ctx.moveTo(-22, -62); ctx.lineTo(-34, -84); ctx.lineTo(-12, -70); ctx.closePath();
+        ctx.moveTo(22, -62); ctx.lineTo(34, -84); ctx.lineTo(12, -70); ctx.closePath();
+        ctx.fill();
+        // arms reaching forward
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 10; ctx.lineCap = "round";
+        var reach = Math.sin(bob * 1.7) * 5;
+        ctx.beginPath();
+        ctx.moveTo(16, -40); ctx.lineTo(44, -30 + reach);
+        ctx.moveTo(16, -22); ctx.lineTo(42, -12 - reach);
+        ctx.stroke();
+        // claws
+        ctx.strokeStyle = "#e8e0c8"; ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(44, -30 + reach); ctx.lineTo(52, -34 + reach);
+        ctx.moveTo(44, -30 + reach); ctx.lineTo(53, -27 + reach);
+        ctx.moveTo(42, -12 - reach); ctx.lineTo(50, -8 - reach);
+        ctx.stroke();
+        // eyes (glowing)
+        ctx.fillStyle = eyeColor;
+        ctx.beginPath();
+        ctx.arc(-10, -48, 6, 0, 6.29); ctx.arc(11, -48, 6, 0, 6.29);
+        ctx.fill();
+        ctx.fillStyle = "#14100a";
+        ctx.beginPath();
+        ctx.arc(-9, -48, 2.6, 0, 6.29); ctx.arc(12, -48, 2.6, 0, 6.29);
+        ctx.fill();
+        // fanged mouth
+        ctx.fillStyle = "#2a0d0d";
+        ctx.beginPath();
+        ctx.ellipse(1, -30, 13, 8, 0, 0, 6.29);
+        ctx.fill();
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.moveTo(-9, -36); ctx.lineTo(-5, -36); ctx.lineTo(-7, -28); ctx.closePath();
+        ctx.moveTo(0, -36); ctx.lineTo(4, -36); ctx.lineTo(2, -28); ctx.closePath();
+        ctx.moveTo(7, -36); ctx.lineTo(11, -36); ctx.lineTo(9, -28); ctx.closePath();
+        ctx.fill();
+        // legs
+        ctx.strokeStyle = color; ctx.lineWidth = 9;
+        var lp = Math.sin(bob * 2.2) * 10;
+        ctx.beginPath();
+        ctx.moveTo(-12, -4); ctx.lineTo(-12 + lp, 2);
+        ctx.moveTo(12, -4); ctx.lineTo(12 - lp, 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawRunner(x, baseY) {
+        var y = baseY + runner.y;
+        var blink = S.invulnT > 0 && Math.floor(S.invulnT * 14) % 2 === 0;
+        ctx.save();
+        ctx.translate(x, y);
+        if (blink) ctx.globalAlpha = 0.35;
+
+        var ph = runner.jumping ? 0.6 : runner.runPhase;
+        var legSwing = runner.jumping ? 12 : Math.sin(ph) * 15;
+        var bob = runner.jumping ? 0 : Math.abs(Math.sin(ph)) * -3;
+        ctx.translate(0, bob);
+        // legs — title-screen boy: dark blue shorts on top, bare skin
+        // below, black sneakers with white soles (same swing / hitbox)
+        var knee1x = legSwing * 0.55, knee2x = -legSwing * 0.55;
+        ctx.lineCap = "round";
+        ctx.strokeStyle = "#1e3a6e"; ctx.lineWidth = 8;
+        ctx.beginPath();
+        ctx.moveTo(0, -26); ctx.lineTo(knee1x, -14);
+        ctx.moveTo(0, -26); ctx.lineTo(knee2x, -14);
+        ctx.stroke();
+        ctx.strokeStyle = "#f0bd85"; ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(knee1x, -14); ctx.lineTo(legSwing, -4);
+        ctx.moveTo(knee2x, -14); ctx.lineTo(-legSwing, -4);
+        ctx.stroke();
+        // shorts block over the hips
+        ctx.fillStyle = "#1e3a6e";
+        ctx.beginPath(); ctx.ellipse(0, -27, 10.5, 7, 0, 0, 6.29); ctx.fill();
+        // sneakers: black uppers, white soles
+        function runnerShoe(sx) {
+          ctx.fillStyle = "#151515";
+          ctx.beginPath(); ctx.ellipse(sx + 1, -5.5, 7, 3.6, 0, 0, 6.29); ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(sx - 6, -2.6, 14, 2.2);
+        }
+        runnerShoe(legSwing); runnerShoe(-legSwing);
+        // body — blue long-sleeve hoodie (no backpack)
+        ctx.fillStyle = "#256fd6";
+        ctx.beginPath();
+        ctx.ellipse(0, -40, 13, 16, 0, 0, 6.29);
+        ctx.fill();
+        // hood bunched behind the neck + front pocket + drawstrings
+        ctx.fillStyle = "#1d5cb8";
+        ctx.beginPath(); ctx.ellipse(-9, -52, 6, 5, -0.5, 0, 6.29); ctx.fill();
+        ctx.fillStyle = "#1d5cb8";
+        ctx.fillRect(-6, -34, 13, 6);
+        ctx.strokeStyle = "#dbeafe"; ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.moveTo(-1, -50); ctx.lineTo(-1, -45); ctx.moveTo(3, -50); ctx.lineTo(3, -45); ctx.stroke();
+        // arm pumping — blue hoodie sleeve with a skin hand at the end
+        var armSwing = runner.jumping ? -14 : Math.sin(ph + 3.14) * 10;
+        var handX = 12, handY = -36 + armSwing * 0.4;
+        ctx.strokeStyle = "#256fd6";
+        ctx.lineWidth = 7;
+        ctx.beginPath();
+        ctx.moveTo(4, -48); ctx.lineTo(handX, handY);
+        ctx.stroke();
+        ctx.fillStyle = "#f0bd85";
+        ctx.beginPath(); ctx.arc(handX, handY, 3.2, 0, 6.29); ctx.fill();
+        // head
+        ctx.fillStyle = "#f0bd85";
+        ctx.beginPath(); ctx.arc(2, -64, 11, 0, 6.29); ctx.fill();
+        // spiky brown hair — no hat: a zigzag fringe of spikes over the
+        // top of the head, like the boy in the title picture
+        ctx.fillStyle = "#5c3317";
+        ctx.beginPath();
+        ctx.moveTo(-9, -67);
+        ctx.lineTo(-8, -78); ctx.lineTo(-3, -71);
+        ctx.lineTo(0, -82); ctx.lineTo(4, -72);
+        ctx.lineTo(8, -80); ctx.lineTo(10, -71);
+        ctx.lineTo(14, -75); ctx.lineTo(13, -65);
+        ctx.quadraticCurveTo(2, -70, -9, -67);
+        ctx.closePath(); ctx.fill();
+        // big eyes looking ahead, open smile
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath(); ctx.arc(0, -64, 3.4, 0, 6.29); ctx.arc(7.5, -64, 3.4, 0, 6.29); ctx.fill();
+        ctx.fillStyle = "#14100a";
+        ctx.beginPath(); ctx.arc(0.8, -64, 1.8, 0, 6.29); ctx.arc(8.3, -64, 1.8, 0, 6.29); ctx.fill();
+        ctx.fillStyle = "#7a2e1d";
+        ctx.beginPath(); ctx.ellipse(4, -57.5, 3.4, 2.4, 0, 0, 6.29); ctx.fill();
+        ctx.fillStyle = "#ff8a9a";
+        ctx.beginPath(); ctx.ellipse(4, -56.4, 2, 1.1, 0, 0, 6.29); ctx.fill();
+        // sweat drops while monsters close
+        if (S.gap < 95) {
+          ctx.fillStyle = "#7fd4ff";
+          var sd = (S.elapsed * 2) % 1;
+          ctx.beginPath(); ctx.arc(-14 - sd * 8, -66 + sd * 10, 2.4, 0, 6.29); ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      function drawObstacle(ob) {
+        var x = ob.x, gy = groundY;
+        ctx.save();
+        if (ob.kind === "log") {
+          ctx.fillStyle = "#8a5a2b";
+          roundRect(x, gy - ob.h, ob.w, ob.h, 10); ctx.fill();
+          ctx.fillStyle = "#a9743f";
+          roundRect(x + 3, gy - ob.h + 4, ob.w - 6, 7, 4); ctx.fill();
+          ctx.fillStyle = "#c9a24d";
+          ctx.beginPath(); ctx.arc(x + 8, gy - ob.h / 2, 6, 0, 6.29); ctx.fill();
+          ctx.beginPath(); ctx.arc(x + ob.w - 8, gy - ob.h / 2, 6, 0, 6.29); ctx.fill();
+        } else if (ob.kind === "rock") {
+          ctx.fillStyle = "#7d7f85";
+          ctx.beginPath();
+          ctx.moveTo(x, gy);
+          ctx.lineTo(x + 6, gy - ob.h + 8);
+          ctx.lineTo(x + ob.w * 0.5, gy - ob.h);
+          ctx.lineTo(x + ob.w - 4, gy - ob.h + 12);
+          ctx.lineTo(x + ob.w, gy);
+          ctx.closePath(); ctx.fill();
+          ctx.fillStyle = "#9a9ca2";
+          ctx.beginPath();
+          ctx.moveTo(x + ob.w * 0.5, gy - ob.h);
+          ctx.lineTo(x + ob.w - 4, gy - ob.h + 12);
+          ctx.lineTo(x + ob.w * 0.45, gy - 8);
+          ctx.closePath(); ctx.fill();
+        } else if (ob.kind === "stump") {
+          ctx.fillStyle = "#6f4520";
+          roundRect(x, gy - ob.h, ob.w, ob.h, 5); ctx.fill();
+          ctx.fillStyle = "#d9b878";
+          ctx.beginPath(); ctx.ellipse(x + ob.w / 2, gy - ob.h, ob.w / 2, 6, 0, 0, 6.29); ctx.fill();
+          ctx.fillStyle = "#b8934f";
+          ctx.beginPath(); ctx.ellipse(x + ob.w / 2, gy - ob.h, ob.w / 4, 3, 0, 0, 6.29); ctx.fill();
+          // roots
+          ctx.fillStyle = "#6f4520";
+          ctx.fillRect(x - 5, gy - 6, 10, 6); ctx.fillRect(x + ob.w - 5, gy - 6, 10, 6);
+        } else if (ob.kind === "puddle") {
+          ctx.fillStyle = "#3f7fbf";
+          ctx.beginPath(); ctx.ellipse(x + ob.w / 2, gy - 3, ob.w / 2, 7, 0, 0, 6.29); ctx.fill();
+          ctx.fillStyle = "#79b8e8";
+          ctx.beginPath(); ctx.ellipse(x + ob.w / 2 - 8, gy - 4, ob.w / 4, 3, 0, 0, 6.29); ctx.fill();
+        } else if (ob.kind === "mushroom") {
+          // cluster of red toadstools
+          ctx.fillStyle = "#f3e6cf";
+          ctx.fillRect(x + 6, gy - 16, 8, 16);
+          ctx.fillRect(x + ob.w - 16, gy - 12, 7, 12);
+          ctx.fillRect(x + ob.w / 2 - 4, gy - 20, 8, 20);
+          ctx.fillStyle = "#e5322d";
+          ctx.beginPath(); ctx.ellipse(x + 10, gy - 16, 13, 8, 0, 3.14, 6.29); ctx.fill();
+          ctx.beginPath(); ctx.ellipse(x + ob.w - 12, gy - 12, 10, 6, 0, 3.14, 6.29); ctx.fill();
+          ctx.fillStyle = "#ff4040";
+          ctx.beginPath(); ctx.ellipse(x + ob.w / 2, gy - 20, 16, 10, 0, 3.14, 6.29); ctx.fill();
+          ctx.fillStyle = "#fff";
+          ctx.beginPath();
+          ctx.arc(x + ob.w / 2 - 5, gy - 24, 2.4, 0, 6.29);
+          ctx.arc(x + ob.w / 2 + 6, gy - 22, 2, 0, 6.29);
+          ctx.arc(x + 10, gy - 19, 1.8, 0, 6.29);
+          ctx.fill();
+        } else if (ob.kind === "coconuts") {
+          // pile of coconuts
+          ctx.fillStyle = "#6b4423";
+          ctx.beginPath();
+          ctx.arc(x + 14, gy - 11, 11, 0, 6.29);
+          ctx.arc(x + ob.w - 14, gy - 11, 11, 0, 6.29);
+          ctx.arc(x + ob.w / 2, gy - 24, 12, 0, 6.29);
+          ctx.fill();
+          ctx.fillStyle = "#8a5a2e";
+          ctx.beginPath();
+          ctx.arc(x + 11, gy - 15, 4, 0, 6.29);
+          ctx.arc(x + ob.w / 2 - 3, gy - 28, 4, 0, 6.29);
+          ctx.fill();
+          ctx.fillStyle = "#3d6629";
+          ctx.beginPath(); ctx.ellipse(x + ob.w / 2 + 12, gy - 30, 10, 4, 0.6, 0, 6.29); ctx.fill();
+        } else if (ob.kind === "vine") {
+          // tangled vine heap to hop over
+          ctx.strokeStyle = "#2e7d32";
+          ctx.lineWidth = 6; ctx.lineCap = "round";
+          ctx.beginPath();
+          ctx.arc(x + 18, gy - 4, 14, 3.14, 6.29);
+          ctx.arc(x + ob.w / 2, gy - 4, 18, 3.14, 6.29);
+          ctx.arc(x + ob.w - 18, gy - 4, 14, 3.14, 6.29);
+          ctx.stroke();
+          ctx.strokeStyle = "#43a047";
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.moveTo(x + 4, gy - 2);
+          ctx.quadraticCurveTo(x + ob.w / 2, gy - 22, x + ob.w - 4, gy - 2);
+          ctx.stroke();
+          ctx.fillStyle = "#43a047";
+          ctx.beginPath();
+          ctx.arc(x + 22, gy - 14, 5, 0, 6.29);
+          ctx.arc(x + ob.w - 24, gy - 12, 5, 0, 6.29);
+          ctx.fill();
+        } else if (ob.kind === "branch") {
+          // fallen branch with leaves
+          ctx.strokeStyle = "#7a4a21";
+          ctx.lineWidth = 9; ctx.lineCap = "round";
+          ctx.beginPath();
+          ctx.moveTo(x + 2, gy - 4);
+          ctx.lineTo(x + ob.w - 4, gy - ob.h + 4);
+          ctx.stroke();
+          ctx.lineWidth = 5;
+          ctx.beginPath();
+          ctx.moveTo(x + ob.w * 0.45, gy - ob.h * 0.5);
+          ctx.lineTo(x + ob.w * 0.62, gy - ob.h - 2);
+          ctx.stroke();
+          ctx.fillStyle = "#3e9e4f";
+          ctx.beginPath();
+          ctx.ellipse(x + ob.w - 8, gy - ob.h + 2, 12, 6, -0.5, 0, 6.29);
+          ctx.ellipse(x + ob.w * 0.62, gy - ob.h - 3, 10, 5, 0.4, 0, 6.29);
+          ctx.ellipse(x + 10, gy - 10, 9, 5, 0.3, 0, 6.29);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      function roundRect(x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+      }
+
+      function drawSnake(sn, tNow) {
+        var headY = sn.len;
+        var headSway = 0;
+        if (sn.state === "hang" || sn.state === "retract") {
+          headSway = Math.sin(tNow * 2 + sn.sway) * 5;
+        } else if (sn.state === "warn") {
+          headSway = (Math.random() - 0.5) * 8; // shaking with the hiss
+        }
+        var headX = sn.x + headSway;
+
+        // target shadow on the ground while a strike is coming / landing,
+        // so the player can read exactly where and when it hits
+        if (sn.state === "warn" || sn.state === "drop" || sn.state === "strike") {
+          ctx.fillStyle = "rgba(20,40,10," + (sn.state === "warn" ? 0.16 + 0.08 * Math.sin(tNow * 18) : 0.28) + ")";
+          ctx.beginPath(); ctx.ellipse(sn.x, groundY + 9, 27, 6, 0, 0, 6.29); ctx.fill();
+        }
+
+        // the vine it hangs from
+        ctx.strokeStyle = "#2e6b26";
+        ctx.lineWidth = 4; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(sn.x, -6); ctx.lineTo(sn.x, 22); ctx.stroke();
+
+        // body: a swaying curve from the top down to the head
+        var amp = sn.len > 140 ? 2.5 : 6;
+        ctx.beginPath();
+        var steps = Math.max(2, Math.floor(headY / 12));
+        for (var b = 0; b <= steps; b++) {
+          var by = (headY * b) / steps;
+          var bx = sn.x + Math.sin(sn.sway + by * 0.045 + tNow * 1.6) * amp * (by / Math.max(1, headY));
+          if (b === 0) ctx.moveTo(bx, by - 4); else ctx.lineTo(bx, by);
+        }
+        ctx.lineTo(headX, headY);
+        ctx.strokeStyle = "#1f8a3d"; ctx.lineWidth = 12; ctx.stroke();
+        ctx.strokeStyle = "#35c759"; ctx.lineWidth = 7; ctx.stroke();
+
+        // coil wrapped around the vine while it's just hanging
+        if (sn.len < 140) {
+          ctx.strokeStyle = "#35c759"; ctx.lineWidth = 7;
+          ctx.beginPath(); ctx.ellipse(sn.x, 13, 19, 8, 0, 0, 6.29); ctx.stroke();
+          ctx.beginPath(); ctx.ellipse(sn.x, 29, 15, 7, 0, 0, 6.29); ctx.stroke();
+        }
+
+        // head
+        ctx.save();
+        ctx.translate(headX, headY);
+        ctx.fillStyle = "#35c759";
+        ctx.beginPath(); ctx.ellipse(0, 0, 17, 13, 0, 0, 6.29); ctx.fill();
+        ctx.fillStyle = "#57e06e";
+        ctx.beginPath(); ctx.ellipse(5, 4, 10, 7, 0, 0, 6.29); ctx.fill();
+        // mouth + fangs while striking
+        if (sn.state === "drop" || sn.state === "strike") {
+          ctx.fillStyle = "#7a1020";
+          ctx.beginPath(); ctx.ellipse(6, 8, 8, 4, 0, 0, 6.29); ctx.fill();
+          ctx.fillStyle = "#fff";
+          ctx.beginPath();
+          ctx.moveTo(1, 6); ctx.lineTo(5, 6); ctx.lineTo(3, 13); ctx.closePath();
+          ctx.moveTo(9, 6); ctx.lineTo(13, 6); ctx.lineTo(11, 13); ctx.closePath();
+          ctx.fill();
+        }
+        // eyes — wide and yellow, wider when it's about to strike
+        var eyeR = sn.state === "warn" ? 5.5 : 4.5;
+        ctx.fillStyle = "#ffe93d";
+        ctx.beginPath(); ctx.arc(-6, -6, eyeR, 0, 6.29); ctx.arc(8, -6, eyeR, 0, 6.29); ctx.fill();
+        ctx.fillStyle = "#14100a";
+        ctx.beginPath(); ctx.arc(-5, -6, 2, 0, 6.29); ctx.arc(9, -6, 2, 0, 6.29); ctx.fill();
+        // forked tongue — out while warning / striking, flickers otherwise
+        if (sn.state === "warn" || sn.state === "drop" || sn.state === "strike" ||
+            Math.sin(tNow * 3 + sn.sway) > 0.55) {
+          ctx.strokeStyle = "#ff3b5c"; ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.moveTo(13, 5); ctx.lineTo(24, 8);
+          ctx.moveTo(24, 8); ctx.lineTo(29, 4);
+          ctx.moveTo(24, 8); ctx.lineTo(29, 12);
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        // big readable "!" while it warns — your cue to jump or sprint
+        if (sn.state === "warn") {
+          ctx.save();
+          ctx.font = "800 30px 'Baloo 2', sans-serif";
+          ctx.textAlign = "center";
+          ctx.lineWidth = 5; ctx.strokeStyle = "rgba(20,40,10,.85)";
+          ctx.strokeText("!", headX + 27, headY - 12);
+          ctx.fillStyle = "#ffd34d";
+          ctx.fillText("!", headX + 27, headY - 12);
+          ctx.restore();
+        }
+      }
+
+      function drawCastleDoor() {
+        var dh = Math.min(215, groundY - 46);
+        var dw = dh * 0.68;
+        var left = door.x - dw / 2;
+        var top = groundY - dh;
+        var open = door.open;
+        ctx.save();
+        // soft golden light spilling onto the path as the doors open
+        if (open > 0) {
+          ctx.fillStyle = "rgba(255,211,77," + (0.35 * open) + ")";
+          ctx.beginPath(); ctx.ellipse(door.x, groundY + 8, dw * 0.75 * open + 20, 10, 0, 0, 6.29); ctx.fill();
+        }
+        // stone frame: outer arch + inner arch
+        ctx.fillStyle = "#57516b";
+        roundRect(left - 14, top - 14, dw + 28, dh + 14, 20); ctx.fill();
+        ctx.fillStyle = "#7a738c";
+        roundRect(left - 7, top - 7, dw + 14, dh + 7, 15); ctx.fill();
+        // little tower tops on the frame
+        ctx.fillStyle = "#57516b";
+        ctx.fillRect(left - 14, top - 34, 26, 22);
+        ctx.fillRect(left + dw - 12, top - 34, 26, 22);
+        ctx.beginPath();
+        ctx.moveTo(left - 18, top - 34); ctx.lineTo(left - 1, top - 52); ctx.lineTo(left + 16, top - 34); ctx.closePath();
+        ctx.moveTo(left + dw - 16, top - 34); ctx.lineTo(left + dw + 1, top - 52); ctx.lineTo(left + dw + 18, top - 34); ctx.closePath();
+        ctx.fill();
+        // the doorway itself: darkness, warming to golden light as it opens
+        ctx.fillStyle = open > 0.05 ? "#ffca3d" : "#241d33";
+        ctx.fillRect(left, top, dw, dh);
+        if (open > 0.05) {
+          ctx.fillStyle = "rgba(255,240,190," + (0.75 * open) + ")";
+          ctx.fillRect(left + dw * 0.18, top, dw * 0.64, dh);
+          // sparkles in the light
+          ctx.fillStyle = "rgba(255,255,255,.85)";
+          for (var sp = 0; sp < 5; sp++) {
+            var sx2 = left + dw * (0.25 + 0.13 * sp);
+            var sy2 = top + dh * (0.2 + 0.16 * ((sp * 37) % 4));
+            ctx.beginPath(); ctx.arc(sx2, sy2, 2.2, 0, 6.29); ctx.fill();
+          }
+        }
+        // wooden door panels, swinging inward: each panel narrows toward
+        // its own edge as `open` goes 0 -> 1
+        var pw = (dw / 2) * (1 - open * 0.92);
+        function panel(px2, flip) {
+          if (pw < 2) return;
+          ctx.fillStyle = "#7a4a21";
+          ctx.fillRect(px2, top, pw, dh);
+          ctx.fillStyle = "#8a5a2e";
+          var planks = Math.max(1, Math.floor(pw / 16));
+          for (var pk = 1; pk < planks; pk++) ctx.fillRect(px2 + pk * (pw / planks) - 1, top, 2, dh);
+          // iron bands + studs
+          ctx.fillStyle = "#3c3a44";
+          ctx.fillRect(px2, top + dh * 0.18, pw, 7);
+          ctx.fillRect(px2, top + dh * 0.72, pw, 7);
+          ctx.fillStyle = "#23222a";
+          ctx.beginPath(); ctx.arc(px2 + (flip ? 4 : pw - 4), top + dh * 0.18 + 3.5, 2.4, 0, 6.29); ctx.fill();
+          ctx.beginPath(); ctx.arc(px2 + (flip ? 4 : pw - 4), top + dh * 0.72 + 3.5, 2.4, 0, 6.29); ctx.fill();
+        }
+        panel(left, false);
+        panel(left + dw - pw, true);
+        // ring handles at the meeting edge while the doors are shut-ish
+        if (open < 0.7) {
+          ctx.strokeStyle = "#2c2a33"; ctx.lineWidth = 4;
+          ctx.beginPath(); ctx.arc(left + dw / 2 - 9 - open * dw * 0.4, top + dh * 0.46, 8, 0, 6.29); ctx.stroke();
+          ctx.beginPath(); ctx.arc(left + dw / 2 + 9 + open * dw * 0.4, top + dh * 0.46, 8, 0, 6.29); ctx.stroke();
+        }
+        // torches on the frame
+        [-1, 1].forEach(function (side) {
+          var tx3 = door.x + side * (dw / 2 + 20);
+          ctx.fillStyle = "#6b4a26"; ctx.fillRect(tx3 - 3, top + 34, 6, 22);
+          var fl2 = 10 + Math.sin(performance.now() / 90 + tx3) * 2.5;
+          ctx.fillStyle = "#ff9d1f";
+          ctx.beginPath(); ctx.ellipse(tx3, top + 27, 6.5, fl2, 0, 0, 6.29); ctx.fill();
+          ctx.fillStyle = "#ffe93d";
+          ctx.beginPath(); ctx.ellipse(tx3, top + 30, 3.5, fl2 * 0.55, 0, 0, 6.29); ctx.fill();
+        });
+        // stone step
+        ctx.fillStyle = "#4a435f";
+        ctx.fillRect(left - 18, groundY, dw + 36, 10);
+        ctx.restore();
+      }
+
+      function drawCastlePlayer(px) {
+        var gy = groundY;
+        ctx.save();
+        ctx.translate(px, gy);
+        var blink = C.invulnT > 0 && Math.floor(C.invulnT * 14) % 2 === 0;
+        if (blink) ctx.globalAlpha = 0.35;
+        var dodgeLean = C.dodgeT > 0 ? 6 : 0;
+        // legs in a ready stance — title-screen boy: dark blue shorts,
+        // bare skin below, black sneakers with white soles
+        ctx.lineCap = "round";
+        ctx.strokeStyle = "#1e3a6e"; ctx.lineWidth = 8;
+        ctx.beginPath();
+        ctx.moveTo(0, -26); ctx.lineTo(-6, -14);
+        ctx.moveTo(0, -26); ctx.lineTo(7, -14);
+        ctx.stroke();
+        ctx.strokeStyle = "#f0bd85"; ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(-6, -14); ctx.lineTo(-11, -4);
+        ctx.moveTo(7, -14); ctx.lineTo(13, -4);
+        ctx.stroke();
+        ctx.fillStyle = "#1e3a6e";
+        ctx.beginPath(); ctx.ellipse(0, -27, 10.5, 7, 0, 0, 6.29); ctx.fill();
+        ctx.fillStyle = "#151515";
+        ctx.beginPath(); ctx.ellipse(-10, -5.5, 7, 3.6, 0, 0, 6.29); ctx.ellipse(14, -5.5, 7, 3.6, 0, 0, 6.29); ctx.fill();
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(-17, -2.6, 14, 2.2); ctx.fillRect(7, -2.6, 14, 2.2);
+        // body — blue long-sleeve hoodie (no backpack)
+        ctx.fillStyle = "#256fd6";
+        ctx.beginPath(); ctx.ellipse(0, -40, 13, 16, 0, 0, 6.29); ctx.fill();
+        ctx.fillStyle = "#1d5cb8";
+        ctx.beginPath(); ctx.ellipse(-9, -52, 6, 5, -0.5, 0, 6.29); ctx.fill();
+        ctx.fillRect(-6, -34, 13, 6);
+        // head — spiky brown hair, no hat
+        ctx.fillStyle = "#f0bd85";
+        ctx.beginPath(); ctx.arc(2, -64, 11, 0, 6.29); ctx.fill();
+        ctx.fillStyle = "#5c3317";
+        ctx.beginPath();
+        ctx.moveTo(-9, -67);
+        ctx.lineTo(-8, -78); ctx.lineTo(-3, -71);
+        ctx.lineTo(0, -82); ctx.lineTo(4, -72);
+        ctx.lineTo(8, -80); ctx.lineTo(10, -71);
+        ctx.lineTo(14, -75); ctx.lineTo(13, -65);
+        ctx.quadraticCurveTo(2, -70, -9, -67);
+        ctx.closePath(); ctx.fill();
+        // big eyes looking at the snake, open smile
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath(); ctx.arc(0, -64, 3.4, 0, 6.29); ctx.arc(7.5, -64, 3.4, 0, 6.29); ctx.fill();
+        ctx.fillStyle = "#14100a";
+        ctx.beginPath(); ctx.arc(1.2, -64, 1.8, 0, 6.29); ctx.arc(8.7, -64, 1.8, 0, 6.29); ctx.fill();
+        ctx.fillStyle = "#7a2e1d";
+        ctx.beginPath(); ctx.ellipse(4, -57.5, 3.4, 2.4, 0, 0, 6.29); ctx.fill();
+        ctx.fillStyle = "#ff8a9a";
+        ctx.beginPath(); ctx.ellipse(4, -56.4, 2, 1.1, 0, 0, 6.29); ctx.fill();
+        // arm holding the slingshot up toward the snake — blue hoodie
+        // sleeve with a skin hand gripping the handle
+        ctx.strokeStyle = "#256fd6"; ctx.lineWidth = 7;
+        ctx.beginPath(); ctx.moveTo(4, -46); ctx.lineTo(20, -56); ctx.stroke();
+        ctx.fillStyle = "#f0bd85";
+        ctx.beginPath(); ctx.arc(20, -56, 3.4, 0, 6.29); ctx.fill();
+        // slingshot: wooden Y + bands (band snaps right after a shot)
+        var snap = C.fireCd > 0.14;
+        ctx.strokeStyle = "#8a5a2b"; ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(20, -56); ctx.lineTo(20, -64);
+        ctx.moveTo(20, -64); ctx.lineTo(14, -74);
+        ctx.moveTo(20, -64); ctx.lineTo(27, -74);
+        ctx.stroke();
+        ctx.strokeStyle = snap ? "#ff5d43" : "#5a4632"; ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(14, -74); ctx.lineTo(snap ? 18 : 20, -68);
+        ctx.lineTo(27, -74);
+        ctx.stroke();
+        if (!snap) { // a rock sits loaded in the pouch
+          ctx.fillStyle = "#8d8d94";
+          ctx.beginPath(); ctx.arc(20.5, -69, 4, 0, 6.29); ctx.fill();
+        }
+        ctx.translate(dodgeLean, 0);
+        ctx.restore();
+        // dodge motion streaks
+        if (C.dodgeT > 0) {
+          ctx.strokeStyle = "rgba(255,255,255,.5)"; ctx.lineWidth = 3;
+          for (var s2 = 0; s2 < 3; s2++) {
+            var sy2 = gy - 20 - s2 * 16;
+            ctx.beginPath(); ctx.moveTo(px - 44, sy2); ctx.lineTo(px - 18, sy2); ctx.stroke();
+          }
+        }
+      }
+
+      function drawCastle() {
+        ctx.save();
+        if (S.shake > 0) ctx.translate((Math.random() - 0.5) * S.shake, (Math.random() - 0.5) * S.shake);
+        var tNow = performance.now() / 1000;
+        // stone wall
+        ctx.fillStyle = "#332e4d";
+        ctx.fillRect(-20, -20, W + 40, H + 40);
+        ctx.fillStyle = "#3b3557";
+        var bw = 92, bh = 40;
+        for (var ry = 0; ry < groundY / bh + 1; ry++) {
+          for (var rx2 = -1; rx2 < W / bw + 1; rx2++) {
+            if ((rx2 + ry) % 2 === 0) ctx.fillRect(rx2 * bw + (ry % 2) * 30, ry * bh, bw - 5, bh - 5);
+          }
+        }
+        // arched window with moonlight
+        ctx.fillStyle = "#141b38";
+        roundRect(W * 0.44, 34, 92, 138, 40); ctx.fill();
+        ctx.strokeStyle = "#57506e"; ctx.lineWidth = 6; roundRect(W * 0.44, 34, 92, 138, 40); ctx.stroke();
+        ctx.fillStyle = "#f4ead0";
+        ctx.beginPath(); ctx.arc(W * 0.44 + 60, 70, 17, 0, 6.29); ctx.fill();
+        ctx.fillStyle = "rgba(190,205,255,.16)";
+        ctx.beginPath();
+        ctx.moveTo(W * 0.44 + 12, 172); ctx.lineTo(W * 0.44 + 80, 172);
+        ctx.lineTo(W * 0.44 + 118, groundY); ctx.lineTo(W * 0.44 - 26, groundY);
+        ctx.closePath(); ctx.fill();
+        // torches
+        [W * 0.16, W * 0.86].forEach(function (tx2) {
+          ctx.fillStyle = "#6b4a26"; ctx.fillRect(tx2 - 3, 96, 6, 30);
+          var fl = 13 + Math.sin(tNow * 13 + tx2) * 3;
+          ctx.fillStyle = "#ff9d1f";
+          ctx.beginPath(); ctx.ellipse(tx2, 88, 8, fl, 0, 0, 6.29); ctx.fill();
+          ctx.fillStyle = "#ffe93d";
+          ctx.beginPath(); ctx.ellipse(tx2, 92, 4.5, fl * 0.55, 0, 0, 6.29); ctx.fill();
+          ctx.fillStyle = "rgba(255,157,31,.10)";
+          ctx.beginPath(); ctx.arc(tx2, 92, 46, 0, 6.29); ctx.fill();
+        });
+        // banner flags
+        ctx.fillStyle = "#7a1f3d";
+        ctx.beginPath(); ctx.moveTo(W * 0.30, 0); ctx.lineTo(W * 0.30 + 44, 0); ctx.lineTo(W * 0.30 + 22, 30); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(W * 0.62, 0); ctx.lineTo(W * 0.62 + 44, 0); ctx.lineTo(W * 0.62 + 22, 30); ctx.closePath(); ctx.fill();
+        // stone floor
+        ctx.fillStyle = "#4a435f";
+        ctx.fillRect(-20, groundY, W + 40, H - groundY + 20);
+        ctx.fillStyle = "#5a5173";
+        ctx.fillRect(-20, groundY, W + 40, 8);
+        ctx.strokeStyle = "rgba(0,0,0,.25)"; ctx.lineWidth = 2;
+        for (var fx2 = 0; fx2 < W / 74 + 1; fx2++) {
+          ctx.beginPath(); ctx.moveTo(fx2 * 74 + 20, groundY + 10); ctx.lineTo(fx2 * 74 + 8, H); ctx.stroke();
+        }
+
+        // danger ring: tracks you while the snake warns, locks at the strike
+        var px = castlePlayerX();
+        if (C.snakeState === "warn") {
+          ctx.fillStyle = "rgba(255,60,40," + (0.22 + 0.12 * Math.sin(tNow * 16)) + ")";
+          ctx.beginPath(); ctx.ellipse(px, groundY + 10, 44, 9, 0, 0, 6.29); ctx.fill();
+        } else if (C.snakeState === "strike") {
+          ctx.fillStyle = "rgba(255,60,40,.35)";
+          ctx.beginPath(); ctx.ellipse(C.strikeX, groundY + 10, 44, 9, 0, 0, 6.29); ctx.fill();
+        }
+
+        /* --- the boss snake: TWO heads, ONE shared coiled body --- */
+        var heads = castleSnakeHeads();
+        var coilX = W * 0.74, coilY = groundY;
+        // necks: two thick tapering curves from the single coil up to
+        // each head — drawn back head first so the front head overlaps.
+        for (var nh = heads.length - 1; nh >= 0; nh--) {
+          var nHead = heads[nh];
+          var ctrlX = coilX - 60 + (nh === 0 ? -26 : 22);
+          ctx.strokeStyle = "#1f8a3d"; ctx.lineCap = "round";
+          ctx.lineWidth = 30;
+          ctx.beginPath();
+          ctx.moveTo(coilX, coilY - 24);
+          ctx.quadraticCurveTo(ctrlX, coilY - 120, nHead.x, nHead.y + 8);
+          ctx.stroke();
+          ctx.strokeStyle = "#35c759"; ctx.lineWidth = 20;
+          ctx.beginPath();
+          ctx.moveTo(coilX, coilY - 24);
+          ctx.quadraticCurveTo(ctrlX, coilY - 120, nHead.x, nHead.y + 8);
+          ctx.stroke();
+        }
+        // coils — the one shared body both heads rise from
+        ctx.fillStyle = "#1f8a3d";
+        ctx.beginPath(); ctx.ellipse(coilX, coilY - 14, 74, 24, 0, 0, 6.29); ctx.fill();
+        ctx.fillStyle = "#35c759";
+        ctx.beginPath(); ctx.ellipse(coilX - 8, coilY - 30, 54, 19, 0, 0, 6.29); ctx.fill();
+        ctx.fillStyle = "#1f8a3d";
+        ctx.beginPath(); ctx.ellipse(coilX + 4, coilY - 45, 36, 14, 0, 0, 6.29); ctx.fill();
+        ctx.fillStyle = "#ffe93d";
+        ctx.beginPath(); ctx.ellipse(coilX - 18, coilY - 33, 9, 4, 0.4, 0, 6.29); ctx.fill();
+        // heads — both drawn with the full face: jaw + fangs when
+        // striking/warning, eyes (X X when dying), forked tongue.
+        var dying = C.snakeState === "dying";
+        for (var hh = 0; hh < heads.length; hh++) {
+          var hdPos = heads[hh];
+          ctx.save();
+          ctx.translate(hdPos.x, hdPos.y);
+          ctx.fillStyle = C.hurtT > 0 ? "#ff7a5c" : "#35c759";
+          ctx.beginPath(); ctx.ellipse(0, 0, 34, 26, 0, 0, 6.29); ctx.fill();
+          ctx.fillStyle = "#57e06e";
+          ctx.beginPath(); ctx.ellipse(-8, 8, 20, 13, 0, 0, 6.29); ctx.fill();
+          if (C.snakeState === "strike" || C.snakeState === "warn") {
+            ctx.fillStyle = "#7a1020";
+            ctx.beginPath(); ctx.ellipse(-12, 12, 14, 7, 0, 0, 6.29); ctx.fill();
+            ctx.fillStyle = "#fff";
+            ctx.beginPath();
+            ctx.moveTo(-22, 8); ctx.lineTo(-17, 8); ctx.lineTo(-19, 17); ctx.closePath();
+            ctx.moveTo(-11, 9); ctx.lineTo(-6, 9); ctx.lineTo(-8, 18); ctx.closePath();
+            ctx.fill();
+          }
+          // eyes
+          if (dying) {
+            ctx.strokeStyle = "#14100a"; ctx.lineWidth = 3.5;
+            ctx.beginPath();
+            ctx.moveTo(-22, -16); ctx.lineTo(-12, -6); ctx.moveTo(-12, -16); ctx.lineTo(-22, -6);
+            ctx.moveTo(6, -16); ctx.lineTo(16, -6); ctx.moveTo(16, -16); ctx.lineTo(6, -6);
+            ctx.stroke();
+          } else {
+            var angry = C.snakeState === "warn" || C.snakeState === "strike";
+            ctx.fillStyle = angry ? "#ff4040" : "#ffe93d";
+            ctx.beginPath(); ctx.arc(-16, -11, 8, 0, 6.29); ctx.arc(11, -11, 8, 0, 6.29); ctx.fill();
+            ctx.fillStyle = "#14100a";
+            ctx.beginPath(); ctx.arc(-18, -11, 3.6, 0, 6.29); ctx.arc(9, -11, 3.6, 0, 6.29); ctx.fill();
+            if (angry) { // brow ridges slant in
+              ctx.strokeStyle = "#1f8a3d"; ctx.lineWidth = 5;
+              ctx.beginPath();
+              ctx.moveTo(-26, -22); ctx.lineTo(-7, -15);
+              ctx.moveTo(21, -22); ctx.lineTo(2, -15);
+              ctx.stroke();
+            }
+          }
+          // tongue — phase-offset per head so they flicker independently
+          if (!dying && (C.snakeState === "warn" || C.snakeState === "strike" || Math.sin(tNow * 3 + hh * 2.1) > 0.5)) {
+            ctx.strokeStyle = "#ff3b5c"; ctx.lineWidth = 3.5;
+            ctx.beginPath();
+            ctx.moveTo(-28, 8); ctx.lineTo(-44, 12);
+            ctx.moveTo(-44, 12); ctx.lineTo(-51, 6);
+            ctx.moveTo(-44, 12); ctx.lineTo(-51, 18);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+        if (C.snakeState === "warn") {
+          // Telegraph: a "!" over EACH head, plus the single danger
+          // ring at the player's feet drawn above — one shared warning
+          // for the one shared strike.
+          ctx.save();
+          ctx.font = "800 40px 'Baloo 2', sans-serif";
+          ctx.textAlign = "center";
+          ctx.lineWidth = 6; ctx.strokeStyle = "rgba(10,10,20,.9)";
+          for (var wi = 0; wi < heads.length; wi++) {
+            ctx.strokeText("!", heads[wi].x - 52, heads[wi].y - 26);
+            ctx.fillStyle = "#ffd34d";
+            ctx.fillText("!", heads[wi].x - 52, heads[wi].y - 26);
+          }
+          ctx.restore();
+        }
+
+        // rocks in flight
+        for (var ri = 0; ri < C.rocks.length; ri++) {
+          var rk2 = C.rocks[ri];
+          ctx.fillStyle = "#9a9aa2";
+          ctx.beginPath(); ctx.arc(rk2.x, rk2.y, 7, 0, 6.29); ctx.fill();
+          ctx.fillStyle = "#c9c9d1";
+          ctx.beginPath(); ctx.arc(rk2.x - 2, rk2.y - 2, 3, 0, 6.29); ctx.fill();
+        }
+
+        drawCastlePlayer(px);
+
+        // particles
+        for (var cp = 0; cp < particles.length; cp++) {
+          var cpt = particles[cp];
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, cpt.life / cpt.max);
+          ctx.fillStyle = cpt.color;
+          ctx.beginPath(); ctx.arc(cpt.x, cpt.y, cpt.r, 0, 6.29); ctx.fill();
+          ctx.restore();
+        }
+        // struck flash
+        if (C.flashT > 0) {
+          ctx.fillStyle = "rgba(255,45,60," + (C.flashT * 0.35) + ")";
+          ctx.fillRect(-20, -20, W + 40, H + 40);
+        }
+        ctx.restore();
+      }
+
+      function draw() {
+        if (C.active) { drawCastle(); return; }
+        ctx.save();
+        if (S.shake > 0) {
+          ctx.translate((Math.random() - 0.5) * S.shake, (Math.random() - 0.5) * S.shake);
+        }
+        // sky (cached gradient — see resize; colors follow the weather)
+        ctx.fillStyle = skyGrad || "#cdeeb0";
+        ctx.fillRect(-20, -20, W + 40, groundY + 20);
+        // weather sky dressing: sun / sunset sun / moon + stars, clouds
+        var wdef = WEATHER_DEFS[currentWeather] || WEATHER_DEFS.sunny;
+        drawWeatherSky(performance.now() / 1000);
+
+        // far canopy silhouettes (tree colors follow the weather)
+        var farOff = -(scrollFar % 240);
+        ctx.fillStyle = wdef.far;
+        for (var i = -1; i < W / 240 + 2; i++) {
+          drawTree(farOff + i * 240 + 120, groundY - 6, 1.5, wdef.far);
+        }
+        // mid trees
+        var midOff = -(scrollMid % 170);
+        for (var j = -1; j < W / 170 + 2; j++) {
+          drawTree(midOff + j * 170 + 80, groundY + 2, 1.05, wdef.mid);
+        }
+        // hanging vines
+        ctx.strokeStyle = "rgba(46,110,40,.65)";
+        ctx.lineWidth = 3;
+        var vineOff = -(scrollMid % 300);
+        for (var v = -1; v < W / 300 + 2; v++) {
+          var vx = vineOff + v * 300 + 150;
+          ctx.beginPath();
+          ctx.moveTo(vx, -5);
+          ctx.quadraticCurveTo(vx + 14, 60, vx + 4, 120 + (v % 3) * 22);
+          ctx.stroke();
+          ctx.fillStyle = "#3e7d33";
+          ctx.beginPath(); ctx.arc(vx + 4, 122 + (v % 3) * 22, 6, 0, 6.29); ctx.fill();
+        }
+
+        // ground (cached gradient — see resize)
+        ctx.fillStyle = groundGrad || "#55853a";
+        ctx.fillRect(-20, groundY, W + 40, H - groundY + 20);
+        // dirt path
+        ctx.fillStyle = "#a97c46";
+        ctx.fillRect(-20, groundY + 10, W + 40, Math.max(20, H - groundY - 26));
+        ctx.fillStyle = "rgba(0,0,0,.13)";
+        var dashOff = -(scrollNear % 90);
+        for (var d = -1; d < W / 90 + 2; d++) {
+          ctx.fillRect(dashOff + d * 90, groundY + 26, 44, 6);
+          ctx.fillRect(dashOff + d * 90 + 30, groundY + 44, 30, 5);
+        }
+        // near grass tufts / ferns
+        var nearOff = -(scrollNear % 130);
+        ctx.strokeStyle = "#2e6b26";
+        ctx.lineWidth = 3; ctx.lineCap = "round";
+        for (var f = -1; f < W / 130 + 2; f++) {
+          var fx = nearOff + f * 130 + 60;
+          ctx.beginPath();
+          ctx.moveTo(fx, groundY + 4); ctx.lineTo(fx - 8, groundY - 12);
+          ctx.moveTo(fx + 5, groundY + 4); ctx.lineTo(fx + 5, groundY - 16);
+          ctx.moveTo(fx + 10, groundY + 4); ctx.lineTo(fx + 18, groundY - 11);
+          ctx.stroke();
+        }
+
+        // obstacles
+        for (var o = 0; o < obstacles.length; o++) drawObstacle(obstacles[o]);
+
+        // the castle door, standing in the jungle path (door transition only)
+        if (door.active) drawCastleDoor();
+
+        // vine snakes, hanging from the top — drawn with the same clock
+        // the monsters use below
+        var snakeT = performance.now() / 1000;
+        for (var sk = 0; sk < snakes.length; sk++) drawSnake(snakes[sk], snakeT);
+
+        // monsters (behind runner) — they creep in from the left edge,
+        // in screaming-bright colors. When the pack gets extremely close
+        // it visibly slows down — that's as close as it can ever get.
+        var tNow = performance.now() / 1000;
+        var leadX = runner.x - S.gap;
+        var mBob = tNow * (S.gap < GAP_CLOSE ? 3.2 : 7);
+        drawMonster(leadX - 118, groundY, 1.18, mBob + 2, "#8b2bff", "#3dffdc");
+        drawMonster(leadX - 62, groundY, 0.92, mBob + 4.4, "#ff7a00", "#fff200");
+        drawMonster(leadX, groundY, 1.32, mBob, "#ff2e88", "#7dff8a");
+
+        // danger glow when the monsters are right on his heels — stalled
+        // at point-blank range, close enough to scare, never to grab.
+        if (S.mode === "playing" && S.gap < GAP_CLOSE) {
+          ctx.fillStyle = "rgba(255,45,120," + (0.10 + 0.06 * Math.sin(tNow * 10)) + ")";
+          ctx.fillRect(-20, -20, W + 40, H + 40);
+        }
+
+        // speed streaks while the RUN burst is active
+        if (S.runT > 0 && S.mode === "playing") {
+          ctx.strokeStyle = "rgba(255,255,255,.55)";
+          ctx.lineWidth = 3; ctx.lineCap = "round";
+          for (var sl = 0; sl < 3; sl++) {
+            var sy = groundY - 18 - sl * 16;
+            var sx = runner.x - 26 - ((S.elapsed * 300 + sl * 37) % 30);
+            ctx.beginPath(); ctx.moveTo(sx - 26, sy); ctx.lineTo(sx, sy); ctx.stroke();
+          }
+        }
+
+        // runner (steps forward into the doorway during the door transition)
+        drawRunner(runner.x + (door.active ? door.through * 55 : 0), groundY);
+
+        // particles
+        for (var p = 0; p < particles.length; p++) {
+          var pt = particles[p];
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, pt.life / pt.max);
+          ctx.fillStyle = pt.color;
+          if (pt.confetti) {
+            ctx.translate(pt.x, pt.y); ctx.rotate(pt.rot);
+            ctx.fillRect(-pt.r, -pt.r * 0.6, pt.r * 2, pt.r * 1.2);
+          } else {
+            ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.r, 0, 6.29); ctx.fill();
+          }
+          ctx.restore();
+        }
+
+        // foreground weather: rain streaks and storm lightning, over
+        // the jungle scene only (the castle scene returns earlier and
+        // the DOM HUD sits above the canvas, so neither is affected)
+        drawWeatherForeground(tNow);
+        ctx.restore();
+      }
+
+      /* ---------------- main loop ---------------- */
+      var lastTs = 0, lastFrameErrLogAt = 0;
+      function frame(ts) {
+        if (!lastTs) lastTs = ts;
+        var dt = Math.min(0.05, (ts - lastTs) / 1000);
+        lastTs = ts;
+        // A single bad frame must never kill the loop: catch, log
+        // (throttled), and always schedule the next frame.
+        frameCount++; fpsCount++;
+        try {
+          if (S.mode === "playing" || S.mode === "won") update(dt);
+          else if (S.mode === "castle") updateCastle(dt);
+          else if (S.mode === "door") updateDoor(dt);
+          draw();
+        } catch (err) {
+          var nowE = Date.now();
+          if (nowE - lastFrameErrLogAt > 5000) {
+            lastFrameErrLogAt = nowE;
+            logEvent("FRAME ERROR (recovered): " + (err && err.message ? err.message : String(err)) +
+              (err && err.stack ? "\n" + err.stack : ""));
+          }
+        }
+        requestAnimationFrame(frame);
+      }
+
+      /* ---------------- no zoom, ever ----------------
+         Tapping JUMP (or RUN, or the timer) must never zoom the screen.
+         The viewport meta locks the scale and CSS touch-action covers
+         modern browsers; these handlers cover the rest — old iOS
+         gesture events, pinch, Ctrl+wheel, and same-control double-taps.
+         Single-finger scrolling inside cards and the debug log is left
+         completely alone: only multi-touch moves and repeated taps on
+         the SAME control are blocked, so cross-button taps (RUN then
+         JUMP, JUMP then timer) still land normally. */
+      function blockZoom(e) { if (e && e.preventDefault) e.preventDefault(); }
+      document.addEventListener("gesturestart", blockZoom, { passive: false });
+      document.addEventListener("gesturechange", blockZoom, { passive: false });
+      document.addEventListener("gestureend", blockZoom, { passive: false });
+      document.addEventListener("dblclick", blockZoom, { passive: false });
+      document.addEventListener("wheel", function (e) {
+        if (e.ctrlKey) e.preventDefault();
+      }, { passive: false });
+      document.addEventListener("touchmove", function (e) {
+        if (e.touches && e.touches.length > 1) e.preventDefault();
+        else if (typeof e.scale === "number" && e.scale !== 1) e.preventDefault();
+      }, { passive: false });
+      var lastTapAt = 0, lastTapTarget = null;
+      document.addEventListener("touchend", function (e) {
+        var now = Date.now();
+        if (e.target === lastTapTarget && now - lastTapAt < 350) {
+          e.preventDefault();
+        }
+        lastTapAt = now;
+        lastTapTarget = e.target;
+      }, { passive: false });
+
+      /* ---------------- input ---------------- */
+      function pressJump(e) {
+        if (e) e.preventDefault();
+        if (S.mode === "playing") doJump();
+        else if (S.mode === "castle") doFire();
+      }
+      jumpBtn.addEventListener("pointerdown", pressJump);
+      runBtn.addEventListener("pointerdown", function (e) {
+        e.preventDefault();
+        if (S.mode === "castle") doDodge();
+        else doRun();
+      });
+      timerShell.addEventListener("click", function (e) {
+        e.stopPropagation();
+        tapTimer();
+      });
+      stage.addEventListener("pointerdown", function (e) {
+        if (e.target.closest(".overlay") || e.target.closest("button")) return;
+        if (S.mode === "castle") {
+          // Tap right on the snake = fire a rock at it. Tap anywhere else
+          // on the castle floor = move there (a way to dodge by moving).
+          var rect = stage.getBoundingClientRect();
+          var tapX = e.clientX - rect.left, tapY = e.clientY - rect.top;
+          var hd2s = castleSnakeHeads();
+          var onSnake = false;
+          for (var ti = 0; ti < hd2s.length; ti++) {
+            if (Math.abs(tapX - hd2s[ti].x) < 95 && Math.abs(tapY - hd2s[ti].y) < 85) { onSnake = true; break; }
+          }
+          if (onSnake) {
+            e.preventDefault();
+            doFire();
+          } else {
+            C.playerTarget = Math.max(-W * 0.20, Math.min(W * 0.34, tapX - W * 0.30));
+          }
+          return;
+        }
+        pressJump(e);
+      });
+      window.addEventListener("keydown", function (e) {
+        keysHeld[e.code] = true;
+        if (e.code === "Space" || e.code === "ArrowUp") {
+          e.preventDefault();
+          if (S.mode === "splash") enterHome();
+          else if (S.mode === "playing") doJump();
+          else if (S.mode === "castle") doFire();
+          else if (S.mode === "title") startGame();
+        }
+        if (e.key === "Enter" && S.mode === "splash") { e.preventDefault(); enterHome(); }
+        if ((e.key === "t" || e.key === "T") && S.mode === "playing") tapTimer();
+        if ((e.key === "r" || e.key === "R") && S.mode === "playing") doRun();
+        if ((e.key === "d" || e.key === "D") && S.mode === "castle") doDodge();
+        if (e.key === "Escape" && (S.mode === "playing" || S.mode === "castle")) pauseGame();
+      });
+      window.addEventListener("keyup", function (e) { keysHeld[e.code] = false; });
+      window.addEventListener("blur", function () { keysHeld = {}; });
+
+      // Persistent "← Back to menu" (top bar, every screen): the same
+      // full stop as QUIT TO TITLE — toTitle() stops the run and the
+      // castle fight, stops the music, resets the run, disarms the
+      // castle and resets the tap-5 counter. On the Corn Games Arcade
+      // site it then leaves for the arcade menu (./index.html); in the
+      // Muse artifact toTitle() has already landed on the Home Screen.
+      document.getElementById("backMenuBtn").addEventListener("click", function () {
+        toTitle();
+        if (window.location.hostname === "corn-games.vercel.app") {
+          window.location.href = "./index.html";
+        }
+      });
+      document.getElementById("enterGameBtn").addEventListener("click", enterHome);
+      document.getElementById("startBtn").addEventListener("click", startGame);
+      document.getElementById("againBtn").addEventListener("click", toTitle);
+      document.getElementById("gameOverBtn").addEventListener("click", toTitle);
+      document.getElementById("menuBtn").addEventListener("click", function () {
+        if (S.mode === "playing" || S.mode === "castle") pauseGame();
+        else if (S.mode === "title") { hideAllOverlays(); show(menuScreen); S.mode = "paused"; }
+      });
+      document.getElementById("resumeBtn").addEventListener("click", function () {
+        if (S.pauseReturn === "castle") { resumeGame(); return; }
+        if (S.distance === 0 && S.elapsed === 0 && S.mode === "paused" && titleScreen.hidden && hud.hidden) {
+          toTitle();
+        } else {
+          hideAllOverlays();
+          if (hud.hidden) { toTitle(); } else { resumeGame(); }
+        }
+      });
+      document.getElementById("restartBtn").addEventListener("click", startGame);
+      document.getElementById("quitBtn").addEventListener("click", toTitle);
+      document.getElementById("howBtnTitle").addEventListener("click", function () {
+        hideAllOverlays(); show(howScreen); S.returnTo = "title";
+      });
+      document.getElementById("howBtnMenu").addEventListener("click", function () {
+        hideAllOverlays(); show(howScreen); S.returnTo = "menuOnly";
+      });
+      document.getElementById("debugBtn").addEventListener("click", function () {
+        hideAllOverlays(); show(debugScreen);
+        renderDebugLog();
+      });
+      document.getElementById("debugClose").addEventListener("click", function () {
+        hide(debugScreen); show(menuScreen);
+      });
+      document.getElementById("debugClear").addEventListener("click", function () {
+        debugEntries = [];
+        saveLog();
+        logEvent("Debug log cleared.");
+        renderDebugLog();
+      });
+      document.getElementById("debugDownload").addEventListener("click", function () {
+        try {
+          var lines = ["LOOP GAME — DEBUG LOG", "Exported: " + new Date().toISOString(), ""];
+          for (var i = 0; i < debugEntries.length; i++) {
+            lines.push("[" + debugEntries[i].t + "] " + debugEntries[i].msg);
+          }
+          var blob = new Blob([lines.join("\n")], { type: "text/plain" });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement("a");
+          a.href = url; a.download = "loop-game-debug-log.txt";
+          document.body.appendChild(a); a.click();
+          document.body.removeChild(a);
+          setTimeout(function () { URL.revokeObjectURL(url); }, 500);
+          logEvent("Debug log downloaded (" + debugEntries.length + " entries).");
+        } catch (e) {
+          logEvent("Debug log download failed: " + (e && e.message ? e.message : e));
+        }
+      });
+      document.getElementById("howBackBtn").addEventListener("click", function () {
+        hide(howScreen);
+        if (S.returnTo === "menuOnly" && S.mode === "paused") show(menuScreen);
+        else if (S.mode === "paused") { S.mode = "title"; show(titleScreen); }
+        else show(titleScreen);
+        // Landing back on the Home Screen re-arms the hidden title tap.
+        if (!titleScreen.hidden) resetTitleTap();
+      });
+      // pointerdown, not click — see the note at onHomeTitleTap: rapid
+      // touch taps have their synthesized clicks cancelled by the
+      // no-zoom touchend guard, so click counting starves on phones.
+      homeTitleEl.addEventListener("pointerdown", onHomeTitleTap);
+      soundBtn.addEventListener("click", function () {
+        soundOn = !soundOn;
+        soundBtn.textContent = soundOn ? "Sound: ON" : "Sound: OFF";
+        if (soundOn) audio();
+      });
+
+      // Music rule: never play while the tab is hidden; auto-pause the run too.
+      document.addEventListener("visibilitychange", function () {
+        if (document.hidden) {
+          stopMusic();
+          logEvent("Tab hidden — game auto-paused.");
+          if (S.mode === "playing" || S.mode === "castle") pauseGame();
+        }
+      });
+
+      /* ---------------- boot ---------------- */
+      resize();
+      seedWeatherFx(); // opening weather is sunny; fx arrays start filled
+      requestAnimationFrame(function () { resize(); });
+      runner.x = Math.max(150, W * 0.34);
+      window.addEventListener("resize", function () {
+        runner.x = Math.max(150, W * 0.34);
+      });
+      resetRun(true);
+      requestAnimationFrame(frame);
+    })();
+    </script>
+  </body>
+</html>
