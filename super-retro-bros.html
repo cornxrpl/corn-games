@@ -1175,9 +1175,9 @@
       updateHUD();
       if (lives <= 0){
         state = 'over'; stateTimer = 0; runActive = false;
+        if (window.Hub) Hub.submitScore('super-retro-bros', score);
         dbg('GAME OVER on level ' + levelNum + ' — final score ' + score);
         musicStop(); sfx('over');
-        if (window.Hub) Hub.submitScore('super-retro-bros', score);
       } else {
         // Respawn right where the life ended — the level is NOT reset:
         // score, corn, power-ups, monster damage, and every tile, item,
@@ -1652,8 +1652,8 @@
             // the SUPER COMBINE is down — NOW the farm is saved, and
             // the win finale runs exactly as it always has
             state = 'win'; stateTimer = 0; runActive = false;
-            musicStop(); sfx('win');
             if (window.Hub) Hub.submitScore('super-retro-bros', score);
+            musicStop(); sfx('win');
           } else {
             // PHASE 2 (Ryan): the first Combine's wreck sets off a
             // full-screen flash — then the SUPER COMBINE rolls in:
@@ -3673,17 +3673,52 @@
       if (stateTimer > 45) text('ENTER / TAP TO HEAD BACK TO THE FARM', VW / 2, 440, 10.5, '#b9cf9a', 'center');
     }
     function drawWin(){
-      drawBackground(LEVEL_THEMES[1]);
       var GY = GROUND_ROW * TILE; // ground line: the wreck, both heroes, and the truck all rest on it
-      // smoking combine wreck on the horizon
-      ctx.fillStyle = '#3c434d';
-      ctx.fillRect(90, GROUND_ROW * TILE - 62, 210, 62);
-      ctx.fillStyle = '#59616e'; ctx.fillRect(104, GROUND_ROW * TILE - 88, 150, 28);
-      ctx.fillStyle = '#1d1d26';
-      ctx.fillRect(100, GROUND_ROW * TILE - 36, 38, 36); ctx.fillRect(268, GROUND_ROW * TILE - 30, 30, 30);
+      // finale backdrop, matched to Ryan's reference pic: peach-orange
+      // sky with small white clouds up top, green rolling hills behind,
+      // and a brown ground strip below — not the dark boss arena
+      var skyG = ctx.createLinearGradient(0, 0, 0, GY);
+      skyG.addColorStop(0, '#f79d4d'); skyG.addColorStop(1, '#ffd98f');
+      ctx.fillStyle = skyG; ctx.fillRect(0, 0, VW, VH);
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      var finaleClouds = [[96, 66], [262, 34], [428, 82], [618, 40], [792, 70], [896, 30]];
+      for (var fc = 0; fc < finaleClouds.length; fc++){
+        var fx = finaleClouds[fc][0], fy = finaleClouds[fc][1];
+        ctx.fillRect(fx, fy, 62, 13);
+        ctx.fillRect(fx + 12, fy - 9, 36, 10);
+        ctx.fillRect(fx + 7, fy + 12, 46, 6);
+      }
+      // rolling hills, two layers, bottoms tucked behind the ground line
+      ctx.fillStyle = '#8fae4a';
+      for (var fh = 0; fh < 5; fh++){
+        ctx.beginPath();
+        ctx.arc(60 + fh * 235, GY + 8, 165, Math.PI, 0);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#639636';
+      for (var fh2 = 0; fh2 < 6; fh2++){
+        ctx.beginPath();
+        ctx.arc(150 + fh2 * 185, GY + 10, 112, Math.PI, 0);
+        ctx.fill();
+      }
+      // brown ground strip
+      ctx.fillStyle = '#8a5a2b'; ctx.fillRect(0, GY, VW, VH - GY);
+      ctx.fillStyle = '#74491f'; ctx.fillRect(0, GY, VW, 4);
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      for (var gs = 0; gs < 26; gs++) ctx.fillRect(hash2(gs, 21) * VW, GY + 10 + hash2(gs, 33) * (VH - GY - 18), 7, 4);
+      // low, dark-grey combine wreck slumped on the ground at the left
+      ctx.fillStyle = '#3a414b';
+      ctx.fillRect(88, GY - 50, 178, 50);
+      ctx.fillStyle = '#454e59'; ctx.fillRect(110, GY - 72, 86, 22);
+      ctx.fillStyle = '#2b3038'; ctx.fillRect(202, GY - 80, 10, 30);
+      ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(88, GY - 50, 178, 6);
+      ctx.fillStyle = '#14141c';
+      ctx.fillRect(100, GY - 28, 34, 28); ctx.fillRect(228, GY - 28, 30, 28);
+      ctx.fillStyle = '#59616e';
+      ctx.fillRect(112, GY - 18, 10, 10); ctx.fillRect(238, GY - 18, 10, 10);
       ctx.fillStyle = 'rgba(160,160,160,0.55)';
       var pu = (frame >> 4) % 3;
-      ctx.fillRect(150 + pu * 6, GROUND_ROW * TILE - 108 - pu * 10, 12 + pu * 5, 12);
+      ctx.fillRect(140 + pu * 6, GY - 96 - pu * 10, 12 + pu * 5, 12);
       // win message block — moved down, clear of the top stats row, all in white
       text('YOU SAVED THE FARM!', VW / 2, 108, 30, '#fff', 'center', 'rgba(0,0,0,0.55)');
       text('The Corporate Combine is scrap metal.', VW / 2, 162, 12.5, '#fff', 'center', 'rgba(0,0,0,0.45)');
@@ -3693,20 +3728,33 @@
       var heroY = GY - 24 * 5;
       drawHeroSprite(0, VW / 2 - 150, heroY, 5, 1, 'stand', heroIdx === 0); // Corn Man on the ground
       drawHeroSprite(1, VW / 2 + 10, heroY, 5, 1, 'stand', heroIdx === 1);  // XRPMan on the ground, next to his truck
-      // XRPMan's pickup truck, parked on the ground right beside him
-      var tx = VW / 2 + 110;
-      ctx.fillStyle = '#0b3d91'; ctx.fillRect(tx + 4, GY - 58, 66, 8);            // open bed
-      ctx.fillStyle = '#1e6eff'; ctx.fillRect(tx, GY - 52, 190, 30);               // bed + lower body + hood
-      ctx.fillStyle = '#1e6eff'; ctx.fillRect(tx + 80, GY - 76, 60, 54);           // cab
-      ctx.fillStyle = '#bfe8ff'; ctx.fillRect(tx + 88, GY - 68, 44, 22);           // cab window
-      ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(tx + 80, GY - 76, 3, 54); ctx.fillRect(tx + 137, GY - 76, 3, 54); // door seams
-      ctx.fillStyle = '#ffe873'; ctx.fillRect(tx + 182, GY - 44, 8, 8);            // headlight
-      ctx.fillStyle = '#c8ced6'; ctx.fillRect(tx + 186, GY - 30, 6, 10);           // front bumper
-      ctx.fillStyle = '#1d1d26';
-      ctx.fillRect(tx + 16, GY - 28, 32, 28); ctx.fillRect(tx + 140, GY - 28, 32, 28); // wheels, bottoms on the ground
+      // XRPMan's pickup truck, parked on the ground right beside him —
+      // a detailed blue side-profile pickup in the pic's style: long
+      // bed at the left, cab with two light-blue windows, silver lower
+      // trim band, black wheels with grey hubs, lights and door seams
+      var tx = VW / 2 + 100;
+      ctx.fillStyle = '#0b3d91'; ctx.fillRect(tx + 8, GY - 82, 108, 10);              // open bed rim
+      ctx.fillStyle = '#1e6eff'; ctx.fillRect(tx, GY - 72, 116, 56);                 // bed
+      ctx.fillStyle = '#1e6eff'; ctx.fillRect(tx + 116, GY - 66, 184, 50);           // cab base + hood
+      ctx.fillStyle = '#1e6eff'; ctx.fillRect(tx + 128, GY - 108, 92, 44);           // cab
+      ctx.fillStyle = '#bfe8ff'; ctx.fillRect(tx + 138, GY - 100, 30, 30);           // side window
+      ctx.fillStyle = '#bfe8ff'; ctx.fillRect(tx + 178, GY - 100, 34, 30);           // windshield
+      ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(tx, GY - 30, 300, 6);         // body shading above the trim
+      ctx.fillStyle = '#c8ced6'; ctx.fillRect(tx, GY - 24, 300, 9);                  // silver lower trim
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(tx + 128, GY - 64, 3, 48); ctx.fillRect(tx + 217, GY - 64, 3, 48); // door seams
+      ctx.fillRect(tx + 196, GY - 56, 12, 4);                                        // door handle
+      ctx.fillStyle = '#1e6eff'; ctx.fillRect(tx + 216, GY - 96, 8, 6);               // side mirror
+      ctx.fillStyle = '#e0483a'; ctx.fillRect(tx, GY - 60, 6, 11);                   // taillight
+      ctx.fillStyle = '#ffe873'; ctx.fillRect(tx + 292, GY - 58, 8, 11);             // headlight
+      ctx.fillStyle = '#c8ced6'; ctx.fillRect(tx + 296, GY - 26, 6, 12);              // front bumper
+      ctx.fillStyle = '#14141c';
+      ctx.fillRect(tx + 26, GY - 36, 48, 36); ctx.fillRect(tx + 228, GY - 36, 48, 36); // wheels, bottoms on the ground
       ctx.fillStyle = '#8b93a0';
-      ctx.fillRect(tx + 26, GY - 19, 12, 12); ctx.fillRect(tx + 150, GY - 19, 12, 12); // hubs
-      text('♪', tx + 108, GY - 108 + Math.sin(frame * 0.08) * 3, 16, '#fff', 'center', 'rgba(0,0,0,0.4)'); // music drifting from the truck
+      ctx.fillRect(tx + 40, GY - 24, 20, 20); ctx.fillRect(tx + 242, GY - 24, 20, 20); // hubs
+      ctx.fillStyle = '#3c434d';
+      ctx.fillRect(tx + 48, GY - 16, 4, 4); ctx.fillRect(tx + 250, GY - 16, 4, 4);     // hub caps
+      text('♪', tx + 168, GY - 128 + Math.sin(frame * 0.08) * 3, 16, '#fff', 'center', 'rgba(0,0,0,0.4)'); // music drifting from the truck
       // final score lines — in white, on the ground strip below the heroes
       text('FINAL SCORE ' + score, VW / 2, 446, 15, '#fff', 'center', 'rgba(0,0,0,0.5)');
       text('🌽 × ' + cornTotal + ' corn harvested across 40 levels', VW / 2, 476, 11.5, '#fff', 'center', 'rgba(0,0,0,0.5)');
