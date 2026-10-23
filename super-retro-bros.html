@@ -1175,9 +1175,9 @@
       updateHUD();
       if (lives <= 0){
         state = 'over'; stateTimer = 0; runActive = false;
-        if (window.Hub) Hub.submitScore('super-retro-bros', score);
         dbg('GAME OVER on level ' + levelNum + ' — final score ' + score);
         musicStop(); sfx('over');
+        if (window.Hub) Hub.submitScore('super-retro-bros', score);
       } else {
         // Respawn right where the life ended — the level is NOT reset:
         // score, corn, power-ups, monster damage, and every tile, item,
@@ -1652,8 +1652,8 @@
             // the SUPER COMBINE is down — NOW the farm is saved, and
             // the win finale runs exactly as it always has
             state = 'win'; stateTimer = 0; runActive = false;
-            if (window.Hub) Hub.submitScore('super-retro-bros', score);
             musicStop(); sfx('win');
+            if (window.Hub) Hub.submitScore('super-retro-bros', score);
           } else {
             // PHASE 2 (Ryan): the first Combine's wreck sets off a
             // full-screen flash — then the SUPER COMBINE rolls in:
@@ -3695,9 +3695,9 @@
       drawHeroSprite(1, VW / 2 + 10, heroY, 5, 1, 'stand', heroIdx === 1);  // XRPMan on the ground, next to his truck
       // XRPMan's pickup truck, parked on the ground right beside him
       var tx = VW / 2 + 110;
-      ctx.fillStyle = '#7e211b'; ctx.fillRect(tx + 4, GY - 58, 66, 8);            // open bed
-      ctx.fillStyle = '#c1442e'; ctx.fillRect(tx, GY - 52, 190, 30);               // bed + lower body + hood
-      ctx.fillStyle = '#c1442e'; ctx.fillRect(tx + 80, GY - 76, 60, 54);           // cab
+      ctx.fillStyle = '#0b3d91'; ctx.fillRect(tx + 4, GY - 58, 66, 8);            // open bed
+      ctx.fillStyle = '#1e6eff'; ctx.fillRect(tx, GY - 52, 190, 30);               // bed + lower body + hood
+      ctx.fillStyle = '#1e6eff'; ctx.fillRect(tx + 80, GY - 76, 60, 54);           // cab
       ctx.fillStyle = '#bfe8ff'; ctx.fillRect(tx + 88, GY - 68, 44, 22);           // cab window
       ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(tx + 80, GY - 76, 3, 54); ctx.fillRect(tx + 137, GY - 76, 3, 54); // door seams
       ctx.fillStyle = '#ffe873'; ctx.fillRect(tx + 182, GY - 44, 8, 8);            // headlight
