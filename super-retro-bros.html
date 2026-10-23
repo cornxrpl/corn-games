@@ -279,7 +279,7 @@
           <li><b>Corn Warp:</b> some fields hide a golden silo. Stand at its door and press ↓ to warp ahead 3 levels.</li>
           <li><b>The giant corn stalk (Level 2):</b> bump the <b>first hay bale</b> of Level 2 from below and a huge corn stalk grows out of it, beanstalk-style, up past the top of the screen. Grab on and hold <b>↑</b> to climb it (tap ◀ or ▶ to hop off, ↓ climbs back down). Up past the top are the <b>Corn Warps</b>: three golden silos that warp your run — score, corn, lives, and power-ups all kept — to <b>Level 10</b>, <b>Level 20</b>, or <b>Level 30</b>. Changed your mind? The wooden door up there takes you back down to Level 2, right at the stalk.</li>
           <li><b>The giant corn stalk (Level 37):</b> Level 37 hides the same trick — bump the <b>first hay bale</b> of Level 37 from below, climb the stalk that grows out of it, and the <b>Corn Warps</b> up top offer two warps this time: <b>Level 40</b>, the Corporate Combine boss arena, or <b>Secret Level 589</b>, Stone's field. The wooden door takes you back down to Level 37, right at the stalk.</li>
-          <li><b>Level 40:</b> the Corporate Combine boss. Stay Golden and pelt it with kernels — and watch out for its charges. It also <b>fires hay bales and corn at you</b>: the hay bales arc like the Barn Monster's, and its corn is a dark-red horizontal attack cob with a red glow — <b>not a pickup</b>, so don't run into it. Dodge or jump over both — touching a fired hay bale or a fired corn cob drains a chunk of energy, just like any other hit.</li>
+          <li><b>Level 40:</b> the Corporate Combine boss. The arena floor is clear end to end now, so it can charge straight across — climb the low hay stacks at either end onto the <b>high hayloft</b> and pelt it with kernels as it rolls underneath you. On the left, <b>three single hay bales stair-step up</b> from the wall stack, each one higher than the last, to a high perch above the loft — a perfect sniping spot. It also <b>fires hay bales and corn at you</b>: the hay bales arc like the Barn Monster's, and its corn is a dark-red horizontal attack cob with a red glow — <b>not a pickup</b>, so don't run into it. Dodge or jump over both — touching a fired hay bale or a fired corn cob drains a chunk of energy, just like any other hit. And beating the first Combine isn't the end: the screen flashes and the <b>SUPER COMBINE</b> rolls in — <b>twice as big</b>, with a full health bar of its own, throwing <b>3 hay bales and 3 corn cobs at a time</b>. It's so tall it <b>smashes through the hayloft</b> as it rolls — don't stand still up there! Beat that one too and the farm is saved.</li>
         </ul>
         <h3>WATCH OUT FOR</h3>
         <ul>
@@ -644,7 +644,7 @@
     var ENERGY_MAX = 4, energy = ENERGY_MAX;
     var level = null, player = null, camX = 0, frame = 0;
     var kernels = [], bales = [], bossCorn = [], fireballs = [], cookies = [], particles = [], floaters = [], popups = [];
-    var timeLeft = 225, levelTime = 0, throwCd = 0, bossRef = null, stoneRef = null, cookieRef = null;
+    var timeLeft = 225, levelTime = 0, throwCd = 0, bossRef = null, stoneRef = null, cookieRef = null, bossFlashT = 0;
     var stateTimer = 0, mealBonus = 0, paused = false;
     /* Secret Level 589 hug scene: Stone's 💦 tears and the hero's
        walk-in position (screen coordinates, set by startHugScene). */
@@ -767,15 +767,60 @@
 
       if (isBoss){
         fillGround(t, 0, W - 1);
-        for (var r = 0; r < ROWS; r++){ t[r][0] = 4; t[r][1] = 4; t[r][W-1] = 4; t[r][W-2] = 4; }
-        // hay platform for dodging + golden corn perch
-        for (var c = 10; c <= 13; c++) t[6][c] = 4;
-        for (var c3 = 24; c3 <= 29; c3++) t[5][c3] = 4;
-        // The single hay block that used to sit in front of the Combine
-        // (row 5, column 42) was REMOVED at Ryan's request — nothing
-        // replaces it. The Combine's charge is unaffected: charge mode
-        // times out back to stalk after 66 frames, and the arena's side
-        // walls (columns 0–1 and W-2–W-1) stop it at either end.
+        // Arena end walls — now LOW stacks (rows 6–10) instead of
+        // full-height walls. Their tops (row 6 top edge, y=288) are
+        // the first step up to the hayloft (below): a full held jump
+        // rises ~217px, so ground (feet y=432) → wall top (288) →
+        // loft (192) are all comfortable hops. The stacks keep the
+        // exact footprint that always bounded the Combine — it is
+        // stopped by the solid rows 6–8 of columns 0–1 / W-2–W-1,
+        // exactly as the full-height walls stopped it — so its
+        // ground run across the arena is unchanged.
+        for (var r = 6; r < ROWS; r++){ t[r][0] = 4; t[r][1] = 4; t[r][W-1] = 4; t[r][W-2] = 4; }
+        // LOW HAY BALES REMOVED (Ryan): the old far-left dodge
+        // platform (row 6, columns 10–13) and the low mid platform
+        // (row 5, columns 24–29) are GONE, and the single row-5,
+        // column-42 block removed in the previous build stays gone.
+        // Rows 5–8 are now completely clear from wall to wall, so
+        // the Combine — whose body rides in rows 5–8 when it rolls
+        // on the ground — can drive straight across the arena floor
+        // with nothing in its path.
+        // THE HAYLOFT (Ryan): high hay-bale platforms at row 4 (top
+        // edge y=192 — 240px above the floor, and the Combine's roof
+        // at y=284 passes 44px underneath them) in segments spaced
+        // across the arena, where the player stands and fires corn
+        // down at the Combine as it rolls below. Segments are 4
+        // tiles wide with gaps of at most 3 open tiles (144px; a
+        // full-speed jump carries ~196px), so the whole loft is
+        // walkable end to end. The three power-up crates (row 4,
+        // columns 6/20/50, set below) sit in the gaps and are part
+        // of the walkway too. The last segment ends at column 52 so
+        // the climb lane beside the right wall stack stays clear —
+        // jumping at the wall face, the player's head passes
+        // column 53 with open sky above it, no head-bonk on the
+        // loft. The left end of the loft is the staircase (below).
+        var loftSegs = [[8,11],[14,17],[22,25],[28,31],[34,37],[40,43],[46,49],[51,52]];
+        for (var ls = 0; ls < loftSegs.length; ls++)
+          for (var lc = loftSegs[ls][0]; lc <= loftSegs[ls][1]; lc++) t[4][lc] = 4;
+        // THE STAIRCASE (Ryan — part of the higher bales, exactly 3
+        // bales): on the player's approach side, well before the
+        // Combine, three single hay bales climb from the left wall
+        // stack up past the loft line, each one step higher:
+        //   step 1 — row 4, column 3 (top y=192): hopped up from the
+        //     wall stack's top (feet y=288) — a 96px rise;
+        //   step 2 — row 3, column 5 (top y=144): a 48px rise, two
+        //     columns over;
+        //   step 3 — row 2, column 7 (top y=96): a 48px rise, two
+        //     columns over — the high perch. Stand here and fire
+        //     corn down at the Combine, or drop right onto the loft
+        //     segment at columns 8–11 and keep going.
+        // Every step is one normal jump from the step below, and
+        // all three bales sit at row 4 or above, so the Combine
+        // rolls straight underneath them — its ground path (rows
+        // 5–8) stays exactly as clear as the low-bale removal left
+        // it. (The SUPER COMBINE is tall enough to reach them, and
+        // smashes them flat like the rest of the loft.)
+        t[4][3] = 4; t[3][5] = 4; t[2][7] = 4;
         addCorn(26 * TILE + 14, 4 * TILE + 10, true);
         // The boss arena carries the same minimum of 3 power-up crates.
         // They sit at row 4 — above the Combine's body (its top edge rides
@@ -999,11 +1044,11 @@
       lastSafe = { x: level.startX, y: level.startY };
       kernels = []; bales = []; bossCorn = []; fireballs = []; cookies = []; particles = []; floaters = []; popups = [];
       camX = 0; timeLeft = 225; levelTime = 0; throwCd = 0;
-      bossRef = null; stoneRef = null; cookieRef = null;
+      bossRef = null; stoneRef = null; cookieRef = null; bossFlashT = 0;
       if (level.boss){
         bossRef = { x: level.bossSpawn.x, y: level.bossSpawn.y, w: 252, h: 148, vx: 0, vy: 0,
                     hp: 30, maxhp: 30, dir: -1, mode: 'stalk', modeT: 0, flash: 0, dead: false,
-                    deadT: 0, wheelT: 0, goldT: 4, baleT: 112, cornT: 64 };
+                    deadT: 0, wheelT: 0, goldT: 4, baleT: 112, cornT: 64, super: false };
         showBanner('LEVEL 40', 'THE CORPORATE COMBINE!', 2400, true);
         sfx('charge');
         dbg('Corporate Combine boss — it fires hay bales and enemy corn at the player (both hurt / drain energy; the fired corn is an attack, not a pickup)');
@@ -1130,7 +1175,7 @@
       updateHUD();
       if (lives <= 0){
         state = 'over'; stateTimer = 0; runActive = false;
-        if (window.Hub) Hub.submitScore('super-retro-bros', score);
+        if(window.Hub)Hub.submitScore('super-retro-bros',score);
         dbg('GAME OVER on level ' + levelNum + ' — final score ' + score);
         musicStop(); sfx('over');
       } else {
@@ -1576,8 +1621,16 @@
           addPopup(k.x - 10, k.y - 22, 'HIT!', '#ffd83d');
           if (bossRef.hp <= 0){
             bossRef.dead = true; bossRef.deadT = 0;
-            score += 5000;
-            dbg('Corporate Combine DEFEATED! +5000 — score ' + score);
+            // the moment a Combine falls, its leftover shots vanish —
+            // no stray bale or cob may drift into the next phase
+            bales = []; bossCorn = [];
+            if (bossRef.super){
+              score += 10000;
+              dbg('SUPER Combine DEFEATED! +10000 — score ' + score);
+            } else {
+              score += 5000;
+              dbg('Corporate Combine DEFEATED! +5000 — score ' + score + ' — but something bigger is coming…');
+            }
             sfx('boom');
             burst(bossRef.x + bossRef.w / 2, bossRef.y + 60, ['#ff8a5c', '#ffd83d', '#888', '#fff'], 46, 5.5);
           }
@@ -1590,13 +1643,35 @@
     function updateBoss(){
       var b = bossRef;
       if (!b) return;
+      if (bossFlashT > 0) bossFlashT--;
       if (b.dead){
         b.deadT++;
         if (b.deadT % 9 === 0) burst(b.x + Math.random() * b.w, b.y + Math.random() * b.h * 0.7, ['#ff8a5c', '#ffd83d', '#999'], 12, 4);
         if (b.deadT > 130){
-          state = 'win'; stateTimer = 0; runActive = false;
-          if (window.Hub) Hub.submitScore('super-retro-bros', score);
-          musicStop(); sfx('win');
+          if (b.super){
+            // the SUPER COMBINE is down — NOW the farm is saved, and
+            // the win finale runs exactly as it always has
+            state = 'win'; stateTimer = 0; runActive = false;
+            if(window.Hub)Hub.submitScore('super-retro-bros',score);
+            musicStop(); sfx('win');
+          } else {
+            // PHASE 2 (Ryan): the first Combine's wreck sets off a
+            // full-screen flash — then the SUPER COMBINE rolls in:
+            // twice as wide and twice as tall as the first (504×296),
+            // 60 HP with its own health bar, throwing 3× the ammo at
+            // the same doubled fire rate. The player is NOT touched:
+            // same spot, same score, corn, lives, energy, and
+            // power-ups — the fight escalates around them.
+            bales = []; bossCorn = [];
+            bossFlashT = 34;
+            bossRef = { x: 44 * TILE + 126 - 252, y: GROUND_ROW * TILE - 296, w: 504, h: 296, vx: 0, vy: 0,
+                        hp: 60, maxhp: 60, dir: -1, mode: 'stalk', modeT: 0, flash: 0, dead: false,
+                        deadT: 0, wheelT: 0, goldT: 4, baleT: 112, cornT: 64, super: true };
+            showBanner('⚠ SUPER COMBINE! ⚠', 'Twice as big — and it throws 3× the ammo!', 2600, true);
+            sfx('charge'); sfx('boom');
+            burst(bossRef.x + bossRef.w / 2, bossRef.y + 150, ['#ff8a5c', '#ffd83d', '#fff'], 44, 5.5);
+            dbg('SUPER COMBINE appeared — 504×296 (2× the first Combine), 60 HP, fires 3 hay bales + 3 corn per volley at the doubled rate; player kept in place with score/corn/lives/energy/power-ups intact');
+          }
         }
         return;
       }
@@ -1619,7 +1694,30 @@
       b.vy = Math.min(b.vy + 0.6, 14);
       b.hitWall = false;
       collideMove(b, false);
-      if (b.hitWall && b.mode === 'charge'){ b.mode = 'stalk'; b.modeT = 60; burst(b.x + (b.dir > 0 ? b.w : 0), b.y + 80, ['#c9c9c9', '#8e6e36'], 10, 3); sfx('bump'); }
+      if (b.hitWall){
+        var smashed = false;
+        if (b.super){
+          // the SUPER COMBINE is twice as tall — its body reaches the
+          // hayloft (row 4), and it PLOWS STRAIGHT THROUGH it: any
+          // hay bale or crate tile in the column it is pushing
+          // against (row 4 or above — never the ground, never the
+          // arena's end stacks, which sit in rows 6–10) is smashed
+          // flat and it rolls on. The first Combine never reaches
+          // row 4, so its movement is exactly as before.
+          var fc = b.dir > 0 ? Math.floor((b.x + b.w + 2) / TILE) : Math.floor((b.x - 2) / TILE);
+          if (fc >= 0 && fc < level.w){
+            for (var sr = 0; sr <= 4; sr++){
+              var sv = level.tiles[sr][fc];
+              if (sv === 4 || sv === 3 || sv === 5){
+                level.tiles[sr][fc] = 0; smashed = true;
+                burst(fc * TILE + 24, sr * TILE + 24, ['#f2c230', '#d9a514', '#ffe873'], 10, 3);
+              }
+            }
+          }
+          if (smashed){ sfx('break'); dbg('SUPER COMBINE smashed through the hayloft at column ' + fc); }
+        }
+        if (!smashed && b.mode === 'charge'){ b.mode = 'stalk'; b.modeT = 60; burst(b.x + (b.dir > 0 ? b.w : 0), b.y + 80, ['#c9c9c9', '#8e6e36'], 10, 3); sfx('bump'); }
+      }
       // golden corn resupply
       b.goldT -= 1 / 60;
       if (b.goldT <= 0){
@@ -1643,7 +1741,14 @@
           // fire rate DOUBLED at Ryan's request: was 132 + rand*36
           b.baleT = 66 + Math.floor(Math.random() * 18);
           var baleDir = pcx < bcx ? -1 : 1;
-          bales.push({ x: bcx + baleDir * (b.w / 2) - 13, y: b.y + 52, vx: baleDir * (5.0 + Math.random() * 1.125), vy: -6.75, t: 0, fromBoss: true });
+          // the SUPER COMBINE throws 3× the ammo (Ryan): three bales
+          // per volley, stacked at its muzzle — each one flies with
+          // the exact same speed and arc as the first Combine's
+          // single shot, only the count changes
+          var nB = b.super ? 3 : 1;
+          for (var nb = 0; nb < nB; nb++){
+            bales.push({ x: bcx + baleDir * (b.w / 2) - 13, y: (b.super ? b.y + 140 : b.y + 52) + (nb - (nB - 1) / 2) * 30, vx: baleDir * (5.0 + Math.random() * 1.125), vy: -6.75, t: 0, fromBoss: true });
+          }
           sfx('throw');
         }
         if (b.cornT > 0) b.cornT--;
@@ -1652,10 +1757,16 @@
           b.cornT = 54 + Math.floor(Math.random() * 20);
           var cornDir = pcx < bcx ? -1 : 1;
           var cornMuzzleX = bcx + cornDir * (b.w / 2);
-          var cornMuzzleY = b.y + 40;
+          var cornMuzzleY = b.super ? b.y + 150 : b.y + 40;
           var pcy = player.y + player.h / 2;
           var cornVy = clamp((pcy - cornMuzzleY) * 0.015, -3.0, 3.0);
-          bossCorn.push({ x: cornMuzzleX, y: cornMuzzleY, vx: cornDir * 8.0, vy: cornVy, t: 0, dir: cornDir });
+          // the SUPER COMBINE throws 3× the ammo (Ryan): three cobs
+          // per volley on the same aim line, stacked at the muzzle —
+          // same 8.0 speed and same damage as the single shot
+          var nC = b.super ? 3 : 1;
+          for (var nc = 0; nc < nC; nc++){
+            bossCorn.push({ x: cornMuzzleX, y: cornMuzzleY + (nc - (nC - 1) / 2) * 30, vx: cornDir * 8.0, vy: cornVy, t: 0, dir: cornDir });
+          }
           sfx('throw');
         }
       }
@@ -2585,47 +2696,53 @@
       ctx.translate(x + w / 2, y);
       if (b.dir < 0) ctx.scale(-1, 1);
       ctx.translate(-w / 2, 0);
+      // the art is drawn once in the first Combine's 252×148 space and
+      // scaled to the boss's real size — so the SUPER COMBINE (504×296)
+      // is the same machine at exactly 2×, wheels, cab, and all
+      ctx.scale(w / 252, h / 148);
+      var dw = 252, dh = 148;
       var flash = b.flash > 0 && (frame >> 1) % 2 === 0;
       // grain tank
       ctx.fillStyle = flash ? '#fff' : '#59616e';
-      ctx.fillRect(18, 6, w - 130, 26);
+      ctx.fillRect(18, 6, dw - 130, 26);
       // main body
       ctx.fillStyle = flash ? '#fff' : '#78818e';
-      ctx.fillRect(6, 30, w - 46, h - 66);
+      ctx.fillRect(6, 30, dw - 46, dh - 66);
       ctx.fillStyle = flash ? '#fff' : '#a4262c';
-      ctx.fillRect(6, 52, w - 46, 14);
+      ctx.fillRect(6, 52, dw - 46, 14);
       ctx.fillStyle = '#fff';
       ctx.font = '11px "Press Start 2P", monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
       ctx.fillText('AGROCORP', 16, 76);
       // cab
       ctx.fillStyle = flash ? '#fff' : '#59616e';
-      ctx.fillRect(w - 96, 0, 58, 46);
+      ctx.fillRect(dw - 96, 0, 58, 46);
       ctx.fillStyle = '#bfe8ff';
-      ctx.fillRect(w - 90, 6, 46, 30);
+      ctx.fillRect(dw - 90, 6, 46, 30);
       // header / reel at front-bottom
       ctx.fillStyle = flash ? '#fff' : '#3c434d';
-      ctx.fillRect(w - 34, h - 44, 32, 40);
+      ctx.fillRect(dw - 34, dh - 44, 32, 40);
       ctx.fillStyle = '#c8ced6';
       var off = (b.wheelT * 10) % 8;
-      for (var i = 0; i < 5; i++) ctx.fillRect(w - 32, h - 42 + ((i * 8 + off) % 40), 28, 3);
+      for (var i = 0; i < 5; i++) ctx.fillRect(dw - 32, dh - 42 + ((i * 8 + off) % 40), 28, 3);
       // wheels
       ctx.fillStyle = '#1d1d26';
-      ctx.fillRect(10, h - 42, 42, 42);
-      ctx.fillRect(w - 78, h - 34, 34, 34);
+      ctx.fillRect(10, dh - 42, 42, 42);
+      ctx.fillRect(dw - 78, dh - 34, 34, 34);
       ctx.fillStyle = '#8b93a0';
-      ctx.fillRect(24, h - 28, 14, 14);
-      ctx.fillRect(w - 68, h - 24, 14, 14);
+      ctx.fillRect(24, dh - 28, 14, 14);
+      ctx.fillRect(dw - 68, dh - 24, 14, 14);
       // exhaust
       ctx.fillStyle = '#22222e';
       ctx.fillRect(30, -6, 6, 14);
       ctx.restore();
-      // HP bar (world space, unflipped)
-      var bw = 220;
+      // HP bar (world space, unflipped) — wider for the SUPER COMBINE,
+      // and it carries its own full 60 HP
+      var bw = b.super ? 340 : 220;
       ctx.fillStyle = 'rgba(10,10,10,0.7)';
       ctx.fillRect(x + w / 2 - bw / 2 - 2, y - 30, bw + 4, 14);
       ctx.fillStyle = b.hp > 8 ? '#d8402f' : '#ff7a2f';
       ctx.fillRect(x + w / 2 - bw / 2, y - 28, bw * Math.max(0, b.hp) / b.maxhp, 10);
-      text('CORPORATE COMBINE', x + w / 2, y - 50, 11, '#fff', 'center', 'rgba(0,0,0,0.6)');
+      text(b.super ? '★ SUPER COMBINE ★' : 'CORPORATE COMBINE', x + w / 2, y - 50, 11, '#fff', 'center', 'rgba(0,0,0,0.6)');
     }
 
     /* ---------------- LEVEL THEMES ----------------
@@ -3106,7 +3223,7 @@
       if (bossRef && bossRef.dead && state === 'play'){
         // smoking wreck
         ctx.save();
-        ctx.translate(Math.round(bossRef.x - camX), Math.round(bossRef.y + 40));
+        ctx.translate(Math.round(bossRef.x - camX), Math.round(bossRef.y + (bossRef.super ? 190 : 40)));
         ctx.fillStyle = '#3c434d';
         ctx.fillRect(6, 60, bossRef.w - 46, 80);
         ctx.fillStyle = '#59616e';
@@ -3216,6 +3333,12 @@
         ctx.fillRect(0, 0, VW, VH);
         text('❚❚ PAUSED', VW / 2, VH / 2 - 20, 26, '#fff', 'center', 'rgba(0,0,0,0.6)');
         text('Press P or tap ❚❚ to keep farming', VW / 2, VH / 2 + 26, 11, '#ffd83d', 'center');
+      }
+      // the SUPER COMBINE entrance flash: a full-screen white flash
+      // that holds bright, then burns off over about half a second
+      if (bossFlashT > 0){
+        ctx.fillStyle = 'rgba(255,255,244,' + (bossFlashT > 16 ? 0.95 : (bossFlashT / 16 * 0.95)).toFixed(3) + ')';
+        ctx.fillRect(0, 0, VW, VH);
       }
     }
 
@@ -3603,7 +3726,7 @@
     }
     updateHUD();
     syncChrome();
-    if (window.Hub) Hub.menuButton();
+    if(window.Hub)Hub.menuButton();
     requestAnimationFrame(loop);
     </script>
   </body>
