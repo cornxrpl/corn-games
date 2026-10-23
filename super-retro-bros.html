@@ -274,8 +274,11 @@
           <li><b>Tester cheat:</b> on the title screen, tap the word SUPER 5 times to turn on invincibility. A ★ INVINCIBLE tag shows in the stats while it's on.</li>
           <li><b>Tester cheat — level select:</b> during the game, tap SCORE in the stats at the top 5 times to open the level select. (The title screen shows no stats, so this one is in-game only.) Enter any level from 1 to 40 and hit GO to start a fresh run there, or CANCEL to go back to where you were, untouched.</li>
           <li><b>Tester cheat — farmhouse jump:</b> on the title screen, tap the 🏆 on the right of "Bros." 5 times to jump straight to the farmhouse at the end of the level — the home-cooked meal, the +1 heart, and then on to the next level, just like finishing the field. If a run is already going, it's that level's farmhouse; if not, a fresh run starts (with your picked hero, or Corn Man) and it's Level 1's farmhouse. The first 4 taps do nothing.</li>
+          <li><b>Tester cheat — Level 37 jump:</b> on the title screen, tap the combine harvester in the title art 5 times to jump straight to Level 37 as a fresh run — score, corn, lives, and power-ups all reset, with your picked hero (or Corn Man if you haven't picked one). The first 4 taps do nothing.</li>
           <li><b>Tester cheat — moon jump:</b> during the game, tap TIME in the stats at the top 5 times to jump straight to the moon — Cookie's level — as a fresh run with your picked hero (score, corn, lives, and power-ups all reset). Up there, collect 20 of the 25 moon rocks to open Cookie's gate, grab the 3 power-up crates so you can throw corn, and beat Cookie with 13 thrown corns — watch out, he throws cookies back. The first 4 taps do nothing.</li>
           <li><b>Corn Warp:</b> some fields hide a golden silo. Stand at its door and press ↓ to warp ahead 3 levels.</li>
+          <li><b>The giant corn stalk (Level 2):</b> bump the <b>first hay bale</b> of Level 2 from below and a huge corn stalk grows out of it, beanstalk-style, up past the top of the screen. Grab on and hold <b>↑</b> to climb it (tap ◀ or ▶ to hop off, ↓ climbs back down). Up past the top are the <b>Corn Warps</b>: three golden silos that warp your run — score, corn, lives, and power-ups all kept — to <b>Level 10</b>, <b>Level 20</b>, or <b>Level 30</b>. Changed your mind? The wooden door up there takes you back down to Level 2, right at the stalk.</li>
+          <li><b>The giant corn stalk (Level 37):</b> Level 37 hides the same trick — bump the <b>first hay bale</b> of Level 37 from below, climb the stalk that grows out of it, and the <b>Corn Warps</b> up top offer two warps this time: <b>Level 40</b>, the Corporate Combine boss arena, or <b>Secret Level 589</b>, Stone's field. The wooden door takes you back down to Level 37, right at the stalk.</li>
           <li><b>Level 40:</b> the Corporate Combine boss. Stay Golden and pelt it with kernels — and watch out for its charges. It also <b>fires hay bales and corn at you</b>: the hay bales arc like the Barn Monster's, and its corn is a dark-red horizontal attack cob with a red glow — <b>not a pickup</b>, so don't run into it. Dodge or jump over both — touching a fired hay bale or a fired corn cob drains a chunk of energy, just like any other hit.</li>
         </ul>
         <h3>WATCH OUT FOR</h3>
@@ -312,7 +315,8 @@
       </div>
     </div>
 
-    <script src="./shared/hub.js"></script>     <script>
+    <script src="./shared/hub.js"></script>
+    <script>
     "use strict";
     /* ============================================================
        SUPER RETRO BROS — an 8-bit farm platformer
@@ -623,7 +627,7 @@
     ];
 
     /* ---------------- GAME STATE ---------------- */
-    var state = 'title'; // title | select | play | meal | warp | over | win | hug | moonwarp | cookietalk | congrats
+    var state = 'title'; // title | select | play | meal | warp | over | win | hug | moonwarp | cookietalk | congrats | warpzone
     /* Title-screen art (the generated Super Retro Bros cover). Drawn
        letterboxed on the title screen only; ENTER GAME is a real DOM
        button over it, never painted into the art. */
@@ -646,6 +650,32 @@
        walk-in position (screen coordinates, set by startHugScene). */
     var hugTears = [], hugHeroX = 0;
     var bannerUntil = 0;
+    /* The CORN WARPS sky screen (reached by climbing the giant corn
+       stalk that grows out of Level 2's first hay bale): the hero walks
+       the clouds between three golden warp silos and a door back down.
+       wzX / wzFace are the hero's spot on that screen (screen coords);
+       WZ_GROUND is the cloud-top line the doors and hero stand on. */
+    var wzX = 150, wzFace = 1;
+    var WZ_GROUND = VH - 118;
+    var WZ_DOORS = [
+      { cx: 84,  dest: 2,  back: true,  label: 'LEVEL 2' },
+      { cx: 330, dest: 10, back: false, label: 'LEVEL 10' },
+      { cx: 545, dest: 20, back: false, label: 'LEVEL 20' },
+      { cx: 760, dest: 30, back: false, label: 'LEVEL 30' }
+    ];
+    /* The same sky screen reached from Level 37's stalk shows its own
+       two warps instead: CORN WARP 1 → LEVEL 40 (the Corporate Combine
+       boss arena) and CORN WARP 2 → SECRET LEVEL 589 (Stone's field —
+       its post-Stone MOON WARP flow is untouched), plus the door back
+       down to Level 37. wzDoors is whichever set the current visit is
+       showing; enterWarpZone picks it from the level whose stalk was
+       climbed, so Level 2's screen is exactly as it always was. */
+    var WZ_DOORS_37 = [
+      { cx: 130, dest: 37,  back: true,  label: 'LEVEL 37' },
+      { cx: 450, dest: 40,  back: false, label: 'LEVEL 40' },
+      { cx: 740, dest: 589, back: false, label: 'SECRET 589' }
+    ];
+    var wzDoors = WZ_DOORS;
     /* Staged power-ups (kept for the whole run, reset on a new game):
        pFast = 🥾 speed boot, pThrow = 🌽 corn thrower, pDouble = 🌽 x2 double corn. */
     var pFast = false, pThrow = false, pDouble = false;
@@ -664,6 +694,9 @@
        tracks whether a run is underway (set in loadLevel, cleared on
        game over / win) so the cheat knows whose farmhouse to jump to. */
     var trophyTaps = 0, runActive = false;
+    /* Tester cheat #5: tap the combine harvester in the title art
+       5 times to jump straight to Level 37 as a fresh run. */
+    var combineTaps = 0;
     /* Respawn-in-place: the last spot the player stood on solid ground.
        Losing a life no longer restarts the level — a pit fall respawns
        here, at the edge of the hole. Set at level start, updated in
@@ -704,7 +737,7 @@
 
     function newPlayer(x, y){
       return { x:x, y:y, w:38, h:60, vx:0, vy:0, face:1, onGround:false,
-               power:false, invuln:0, animT:0, dead:false, coyote:0, jumpBuf:0, wasGround:false };
+               power:false, invuln:0, animT:0, dead:false, coyote:0, jumpBuf:0, wasGround:false, climbing:false };
     }
 
     /* ---------------- LEVEL GENERATION ---------------- */
@@ -726,6 +759,7 @@
       var t = blankTiles(W);
       var L = { n:n, w:W, tiles:t, enemies:[], items:[], powerups:[], boss:isBoss, monster:null,
                 stalkCol: W - 4, warpCol: -1, th: themeForLevel(n),
+                stalkBale: null, stalk: null,
                 startX: 2 * TILE, startY: (GROUND_ROW) * TILE - 60 };
       function addCorn(px, py, golden){ L.items.push({ x:px, y:py, golden:!!golden, taken:false, fromBlock:false, vy:0, t:Math.random()*6 }); }
       function addCornRow(col0, count, rowY){ for (var i = 0; i < count; i++) addCorn((col0 + i) * TILE + 14, rowY * TILE + 10, false); }
@@ -768,6 +802,7 @@
       if (n >= 3) enemyTypes.push('tractor');
       if (n >= 6) enemyTypes.push('tractor', 'pig');
       var warpPlaced = false;
+      var siloCol = -1; // column the warp roll picked (kept for enemy/crate spacing even on levels whose silo was halved away)
       while (x < endStart){
         var segLen = 6 + Math.floor(rand() * 9);
         segLen = Math.min(segLen, endStart - x);
@@ -795,15 +830,23 @@
         }
         // corns along the ground sometimes
         if (rand() < 0.4) addCornRow(x + Math.floor(segLen / 2), 2, 8);
-        // golden silo Corn Warp on odd levels
+        // golden silo Corn Warp — HALVED (Ryan: "too many"): the silo now
+        // appears on only half as many levels. The roll still runs on every
+        // odd level exactly as before and still marks its column (siloCol),
+        // so the seeded layout/enemy rolls on all levels stay identical;
+        // the silo itself is only placed when n % 4 === 1 (levels 1, 5, 9,
+        // …, 37 — 10 levels, down from the 19 odd levels 1–37 that each
+        // carried one). Entering it still warps ahead 3 levels, same
+        // banner and flow.
         if (!warpPlaced && n % 2 === 1 && n < 38 && x > 18 && rand() < 0.55){
-          L.warpCol = x + 2; warpPlaced = true;
+          warpPlaced = true; siloCol = x + 2;
+          if (n % 4 === 1) L.warpCol = x + 2;
         }
         // enemies on this segment
         var ne = rand() < 0.35 ? 0 : (rand() < 0.75 ? 1 : 2);
         for (var e = 0; e < ne; e++){
           var ecol = x + 1 + Math.floor(rand() * Math.max(1, segLen - 2));
-          if (Math.abs(ecol - L.warpCol) > 1) addEnemy(enemyTypes[Math.floor(rand() * enemyTypes.length)], ecol);
+          if (Math.abs(ecol - siloCol) > 1) addEnemy(enemyTypes[Math.floor(rand() * enemyTypes.length)], ecol);
         }
         x += segLen;
         if (x < endStart){
@@ -842,7 +885,7 @@
               if (c < 4 || c > W - 14) continue;                    // clear of the start, the monster, and the stalk
               if (t[GROUND_ROW][c] !== 1) continue;                 // solid ground to stand on (never over a pit)
               if (t[6][c] !== 0 || t[5][c] !== 0) continue;         // crate slot and the space above it must be clear
-              if (L.warpCol > 0 && Math.abs(c - L.warpCol) <= 1) continue;
+              if (siloCol > 0 && Math.abs(c - siloCol) <= 1) continue;
               var tooClose = false;
               for (var cj = 0; cj < crateCols.length; cj++) if (Math.abs(crateCols[cj] - c) < 5){ tooClose = true; break; }
               if (tooClose) continue;                               // keep the crates spread out
@@ -850,6 +893,20 @@
             }
           }
           if (placedC >= 0){ t[6][placedC] = 3; crateCols.push(placedC); crateCount++; }
+        }
+      }
+      // LEVELS 2 AND 37 ONLY: the first hay bale of the field — the
+      // leftmost hay block, which is the first block of the first hay
+      // platform — is special. Bump its underside and a giant corn
+      // stalk grows out of it, beanstalk-style (see headBump). Every
+      // other hay bale in every level just goes *bonk*, exactly as
+      // before.
+      if (n === 2 || n === 37){
+        stalkScan:
+        for (var sc2 = 0; sc2 < W; sc2++){
+          for (var sr2 = 0; sr2 < ROWS; sr2++){
+            if (t[sr2][sc2] === 4){ L.stalkBale = { tx: sc2, ty: sr2 }; break stalkScan; }
+          }
         }
       }
       // The Barn Monster stands guard near the end of every regular level,
@@ -1023,6 +1080,20 @@
       }
     }
     function headBump(tx, ty, v){
+      // LEVEL 2 / LEVEL 37 SECRET: bumping the underside of the first
+      // hay bale grows a giant corn stalk out of it, beanstalk-style —
+      // a tall green stalk with leaves and ears that climbs past the
+      // top of the screen (its growth is animated in updateStalk, the
+      // climb itself in updateClimb). Once per level load: after it
+      // has grown, the bale just bonks like any other.
+      if (v === 4 && level.stalkBale && !level.stalk && tx === level.stalkBale.tx && ty === level.stalkBale.ty){
+        level.stalk = { tx: tx, ty: ty, cx: tx * TILE + 24, baseY: ty * TILE, topY: ty * TILE, grown: false };
+        burst(tx * TILE + 24, ty * TILE, ['#43b04c', '#2e7d32', '#7ddb6a', '#ffd83d'], 16, 3.2);
+        sfx('gold');
+        showBanner('A CORN STALK GREW!', 'Grab on and hold ↑ to climb it!', 2200);
+        dbg('Level ' + level.n + ': the first hay bale was bumped from below — a giant corn stalk is growing!');
+        return;
+      }
       if (v === 3){
         // power-up crate: the next staged power-up rises up and sits on top of
         // the block until the player moves onto it (never auto-collected)
@@ -1062,7 +1133,8 @@
       sfx(reason === 'pit' ? 'splash' : 'hurt');
       updateHUD();
       if (lives <= 0){
-        state = 'over'; stateTimer = 0; runActive = false; if (window.Hub) { Hub.submitScore('super-retro-bros', score); }
+        state = 'over'; stateTimer = 0; runActive = false;
+        if (window.Hub) Hub.submitScore('super-retro-bros', score);
         dbg('GAME OVER on level ' + levelNum + ' — final score ' + score);
         musicStop(); sfx('over');
       } else {
@@ -1081,6 +1153,7 @@
         }
         player.x = rx; player.y = ry;
         player.vx = 0; player.vy = 0;
+        player.climbing = false;
         player.invuln = 150;
         if (reason === 'time') timeLeft = 225; // a fresh clock for the new life
         dbg('Respawned in place on level ' + levelNum + ' (' + reason + ') — level progress kept');
@@ -1183,8 +1256,50 @@
       updateHUD();
     }
 
+    /* Climbing the giant corn stalk (Level 2's secret), Mario-vine
+       style: gravity and tile collision are off — the hero hangs on the
+       stalk and moves along it. Hold ↑ (or Space / the A button) to
+       climb up, ↓ to climb back down, tap ◀ or ▶ to hop off sideways,
+       and climbing down to the bale steps off onto it. Going up past
+       the top of the stalk arrives at the CORN WARPS sky screen. */
+    function updateClimb(p){
+      var st = level.stalk;
+      if (!st){ p.climbing = false; return; }
+      if (p.invuln > 0) p.invuln--;
+      p.vx = 0; p.vy = 0;
+      p.x = st.cx - p.w / 2;
+      var spd = 3.1;
+      if (keys.jump) p.y -= spd;            // ↑ / Space / A button: up the stalk
+      else if (keys.down) p.y += spd;       // ↓: back down the stalk
+      p.animT += 0.15;
+      // hop off sideways on a fresh ◀ / ▶ press
+      if (pressed.left || pressed.right){
+        var dir = pressed.left ? -1 : 1;
+        pressed.left = pressed.right = false;
+        p.climbing = false;
+        p.face = dir; p.vx = dir * 3.4; p.vy = -9.5;
+        sfx('jump');
+        return;
+      }
+      // climbed back down to the bale: step off onto it
+      if (keys.down && p.y + p.h >= st.baseY){
+        p.y = st.baseY - p.h;
+        p.climbing = false; p.onGround = true;
+        return;
+      }
+      if (!st.grown){
+        // still growing: the hero can ride up with it, but no higher
+        // than the tip until it tops out past the screen
+        if (p.y < st.topY + 2) p.y = st.topY + 2;
+      } else if (p.y <= st.topY + 2){
+        // up past the top of the corn stalk!
+        enterWarpZone();
+      }
+    }
+
     function updatePlayer(dt){
       var p = player;
+      if (p.climbing){ updateClimb(p); return; }
       var accel = p.onGround ? (pFast ? 1.15 : 0.9) : 0.6;
       var maxSp = pFast ? 5.3 : 3.7;
       if (keys.left){ p.vx = Math.max(p.vx - accel, -maxSp); p.face = -1; }
@@ -1206,6 +1321,20 @@
       if (p.onGround && Math.abs(p.vx) > 0.4) p.animT += Math.abs(p.vx) * 0.09; else if (p.onGround) p.animT = 0;
       if (p.onGround) lastSafe = { x: p.x, y: p.y }; // respawn point if this life ends
       if (p.invuln > 0) p.invuln--;
+
+      // grab the giant corn stalk (Level 2's secret): touching it while
+      // ↑ is held (the jump key / the A button) latches on, Mario-style
+      if (level.stalk){
+        var stb = level.stalk;
+        if ((keys.jump || jumpHeld) && Math.abs((p.x + p.w / 2) - stb.cx) < 27 && p.y + p.h > stb.topY + 6 && p.y < stb.baseY + 8){
+          p.climbing = true; p.vx = 0; p.vy = 0;
+          p.x = stb.cx - p.w / 2;
+          pressed.left = pressed.right = false; // a held direction shouldn't hop straight back off
+          sfx('jump');
+          dbg('Grabbed the corn stalk — climbing!');
+          return;
+        }
+      }
 
       // corn warp silo
       if (pressed.down && level.warpCol > 0){
@@ -1284,6 +1413,26 @@
           continue;
         }
         if (overlap(player, { x: pu.x, y: pu.y, w: 34, h: 32 })) collectPowerup(pu);
+      }
+    }
+
+    /* The giant corn stalk (Level 2's secret): once the first hay bale
+       is bumped, the stalk grows upward out of it a few pixels a frame,
+       shedding leaf bits as it goes, until its tip is past the top of
+       the screen — then it stands there, ready to climb. */
+    function updateStalk(){
+      var st = level && level.stalk;
+      if (!st || st.grown) return;
+      st.topY -= 3.4;
+      if (st.topY <= -70){
+        st.topY = -70; st.grown = true;
+        dbg('The corn stalk grew past the top of the screen — climb it!');
+      } else if (frame % 5 === 0){
+        particles.push({ x: st.cx + (Math.random() - 0.5) * 26, y: st.topY + 4,
+                         vx: (Math.random() - 0.5) * 1.2, vy: 0.6 + Math.random(),
+                         life: 20 + Math.random() * 14,
+                         color: ['#43b04c', '#2e7d32', '#7ddb6a'][Math.floor(Math.random() * 3)],
+                         size: 3 + Math.random() * 3 });
       }
     }
 
@@ -1449,7 +1598,8 @@
         b.deadT++;
         if (b.deadT % 9 === 0) burst(b.x + Math.random() * b.w, b.y + Math.random() * b.h * 0.7, ['#ff8a5c', '#ffd83d', '#999'], 12, 4);
         if (b.deadT > 130){
-          state = 'win'; stateTimer = 0; runActive = false; if (window.Hub) { Hub.submitScore('super-retro-bros', score); }
+          state = 'win'; stateTimer = 0; runActive = false;
+          if (window.Hub) Hub.submitScore('super-retro-bros', score);
           musicStop(); sfx('win');
         }
         return;
@@ -1760,6 +1910,49 @@
       dbg('MOON WARP entered — blasting off to the moon!');
     }
 
+    /* Up past the top of Level 2's giant corn stalk: the CORN WARPS sky
+       screen. The level underneath is left exactly as it was — the
+       clock is paused while up here — and the hero walks the clouds in
+       step()'s warpzone branch. */
+    function enterWarpZone(){
+      player.climbing = false;
+      state = 'warpzone'; stateTimer = 0;
+      wzX = 150; wzFace = 1;
+      pressed.down = false;
+      // Level 37's stalk leads to its own two-warp screen; Level 2's
+      // keeps the original three warps (10 / 20 / 30).
+      wzDoors = (level.n === 37) ? WZ_DOORS_37 : WZ_DOORS;
+      sfx('warp'); musicStop();
+      dbg('Climbed past the top of Level ' + level.n + "'s corn stalk — the CORN WARPS sky screen!");
+    }
+    /* Taking a door on the sky screen. A warp silo starts its level as
+       the next level of the CURRENT run — loadLevel leaves score, corn,
+       lives, energy, and power-ups untouched, so nothing resets. */
+    function chooseWarpDoor(d){
+      if (d.back){ backFromWarpZone(); return; }
+      sfx('warp');
+      dbg('Corn Warps: silo → Level ' + d.dest + ' (run carried over — score ' + score + ', corn ×' + cornTotal + ', lives ' + lives + ')');
+      loadLevel(d.dest, true);
+      showBanner('CORN WARP!', 'Warped to Level ' + d.dest + '!', 2000);
+    }
+    /* Changed your mind: back down to Level 2, standing on the hay bale
+       right where the stalk grows — the stalk stays grown and the field
+       is exactly as it was left. */
+    function backFromWarpZone(){
+      var st = level.stalk;
+      state = 'play'; stateTimer = 0;
+      player.x = st.cx - player.w / 2;
+      player.y = st.baseY - player.h;
+      player.vx = 0; player.vy = 0; player.climbing = false; player.onGround = true;
+      lastSafe = { x: player.x, y: player.y };
+      camX = clamp(player.x + player.w / 2 - VW * 0.42, 0, Math.max(0, level.w * TILE - VW));
+      sfx('warp');
+      if (AC && soundOn) musicStart();
+      showBanner('BACK IN LEVEL ' + level.n, 'Right back at the corn stalk', 1600);
+      updateHUD();
+      dbg('Corn Warps: back down to Level ' + level.n + ', at the corn stalk');
+    }
+
     /* Cookie is beaten. No farmhouse, no win finale — a two-line
        exchange on the moon: Cookie's line first, then the hero's. */
     function startCookieTalk(){
@@ -1811,6 +2004,7 @@
           if (state === 'play'){
             updatePowerups();
           }
+          if (state === 'play') updateStalk();
           if (state === 'play'){
             updateEnemies();
             if (state === 'play'){
@@ -1851,6 +2045,22 @@
           dbg('Moon warp: the secret field → the moon (run carried over)');
           loadLevel(590, true);
         }
+      }
+      else if (state === 'warpzone'){
+        // the CORN WARPS sky screen: walk the clouds left/right, and
+        // press ▼ at a silo (or the door back down) to take it — taps
+        // on the doors work too (canvas pointer handler)
+        stateTimer++;
+        if (keys.left){ wzX = Math.max(24, wzX - 3.6); wzFace = -1; }
+        if (keys.right){ wzX = Math.min(VW - 62, wzX + 3.6); wzFace = 1; }
+        if (pressed.down){
+          pressed.down = false;
+          var hc2 = wzX + 19;
+          for (var wd = 0; wd < wzDoors.length; wd++){
+            if (Math.abs(hc2 - wzDoors[wd].cx) < 42){ chooseWarpDoor(wzDoors[wd]); break; }
+          }
+        }
+        updateFx();
       }
       else if (state === 'cookietalk'){
         stateTimer++;
@@ -2133,6 +2343,21 @@
       }
       syncChrome();
     }
+    /* ---- Combine ×5 Level 37 cheat ----
+       The 5th tap on the combine harvester in the title art starts
+       Level 37 as a fresh run — score, corn, lives, and power-ups
+       reset, with the picked hero (heroIdx already defaults to
+       Corn Man, the same default as the right-🏆 cheat). Taps 1–4
+       do nothing, and nothing on the title screen hints at it. */
+    function combineCheat(){
+      combineTaps = 0;
+      dbg('CHEAT: level 37 jump (combine tapped 5× on title) — fresh run, hero ' + HEROES[heroIdx].name);
+      score = 0; cornTotal = 0; lives = 3; energy = ENERGY_MAX; superTaps = 0; trophyTaps = 0;
+      pFast = false; pThrow = false; pDouble = false;
+      loadLevel(37, false);
+      if (AC && soundOn) beep(880, 0.09, 'square', 0.1);
+      syncChrome();
+    }
     canvas.addEventListener('pointerdown', function(e){
       audioInit();
       var rect = canvas.getBoundingClientRect();
@@ -2144,6 +2369,7 @@
         if (mx >= 205 && mx <= 490 && my >= 0 && my <= 84){
           superTaps++;
           trophyTaps = 0;
+          combineTaps = 0;
           if (superTaps >= 5){
             superTaps = 0;
             if (!cheatInvincible){
@@ -2162,11 +2388,24 @@
         if (mx >= 592 && mx <= 672 && my >= 90 && my <= 166){
           trophyTaps++;
           superTaps = 0;
+          combineTaps = 0;
           if (trophyTaps >= 5) trophyCheat();
+          return;
+        }
+        // tester cheat: tap the combine harvester in the title art
+        // 5 times to jump straight to Level 37 as a fresh run (zone =
+        // the combine's spot in the fitted title art); taps 1–4 do
+        // nothing
+        if (mx >= 642 && mx <= 840 && my >= 234 && my <= 334){
+          combineTaps++;
+          superTaps = 0;
+          trophyTaps = 0;
+          if (combineTaps >= 5) combineCheat();
           return;
         }
         superTaps = 0;
         trophyTaps = 0;
+        combineTaps = 0;
         return;
       }
       if (state === 'select'){
@@ -2184,6 +2423,15 @@
         // the congrats screen's START OVER button is a real tap target
         // (drawn in drawCongrats) — taps anywhere else here do nothing
         if (stateTimer > 20 && mx >= VW / 2 - 150 && mx <= VW / 2 + 150 && my >= 448 && my <= 504) startOverToSelect();
+        return;
+      }
+      if (state === 'warpzone'){
+        // the CORN WARPS sky screen: tapping a silo (or the door back
+        // down) takes it — walking to it and pressing ▼ works too
+        for (var wi = 0; wi < wzDoors.length; wi++){
+          var wd2 = wzDoors[wi];
+          if (Math.abs(mx - wd2.cx) < 58 && my > WZ_GROUND - 252){ chooseWarpDoor(wd2); return; }
+        }
         return;
       }
       confirmAdvance();
@@ -2633,6 +2881,35 @@
         }
       }
     }
+    function drawBeanStalk(){
+      // the giant corn stalk growing out of Level 2's first hay bale:
+      // a thick green stem with alternating leaves and little ears,
+      // from the top of the bale up to its tip (past the top of the
+      // screen once grown). Drawn behind the hero, so he hangs on its
+      // front while climbing.
+      var st = level.stalk;
+      if (!st) return;
+      var sx = Math.round(st.cx - camX);
+      if (sx < -90 || sx > VW + 90) return;
+      var topY = Math.round(st.topY), baseY = st.baseY;
+      ctx.fillStyle = '#2e7d32';
+      ctx.fillRect(sx - 7, topY, 14, baseY - topY);
+      ctx.fillStyle = '#43b04c';
+      ctx.fillRect(sx - 7, topY, 5, baseY - topY);
+      var leafI = 0;
+      for (var ly = baseY - 28; ly > topY + 10; ly -= 34, leafI++){
+        ctx.fillStyle = leafI % 2 ? '#43b04c' : '#37953d';
+        if (leafI % 2) ctx.fillRect(sx + 5, ly, 27, 7); else ctx.fillRect(sx - 32, ly, 27, 7);
+        if (leafI % 3 === 1) drawCornEar(sx + (leafI % 2 ? 13 : -27), ly - 17, 0.8, false, 0);
+      }
+      // the tip: a little leafy crown, still unfurling while it grows
+      ctx.fillStyle = '#43b04c';
+      ctx.fillRect(sx - 21, topY - 5, 16, 7);
+      ctx.fillRect(sx + 5, topY - 9, 16, 7);
+      ctx.fillRect(sx - 4, topY - 14, 8, 11);
+      if (player && !player.climbing && state === 'play' && Math.abs((player.x + player.w / 2) - st.cx) < 95)
+        text('HOLD ↑ TO CLIMB!', sx, Math.max(10, baseY - 208), 9.5, '#fff', 'center', 'rgba(0,0,0,0.5)');
+    }
     function drawSilo(){
       if (level.warpCol < 0) return;
       var x = level.warpCol * TILE - camX, GY = GROUND_ROW * TILE;
@@ -2686,6 +2963,7 @@
       drawBackground(level.th);
       drawSilo();
       drawFenceAndTiles();
+      drawBeanStalk();
       drawStalk();
       // moon craters: dark hollows pocked into the surface
       if (level.moon){
@@ -3012,6 +3290,61 @@
       text('Hold on to your husk...', VW / 2, VH / 2 + 44, 12, '#fff', 'center');
       drawHeroSprite(heroIdx, VW / 2 - 24, VH / 2 - 30 + Math.sin(frame * 0.1) * 5, 3, 1, 'jump', true);
     }
+    function drawWarpZone(){
+      // the CORN WARPS sky screen, up past the top of Level 2's giant
+      // corn stalk: Level 2's own sky, a sea of clouds to walk on, the
+      // wooden door back down, and three golden warp silos — LEVEL 10,
+      // LEVEL 20, LEVEL 30 — clearly labeled. Walk to one and press ▼,
+      // or just tap it.
+      drawBackground(level.th);
+      var CGY = WZ_GROUND;
+      // the cloud sea the hero walks on
+      ctx.fillStyle = 'rgba(255,255,255,0.96)';
+      ctx.fillRect(0, CGY + 28, VW, VH - CGY - 28);
+      for (var ci = 0; ci < 12; ci++){
+        ctx.beginPath();
+        ctx.arc(ci * 88 - 16 + (ci % 2) * 30, CGY + 32, 36, Math.PI, 0);
+        ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(178,208,232,0.55)';
+      ctx.fillRect(0, VH - 10, VW, 10);
+      text('🌽 CORN WARPS 🌽', VW / 2, 60, 27, '#ffd83d', 'center', '#7a3c0a');
+      text('WALK TO A SILO AND PRESS ▼ — OR TAP IT', VW / 2, 104, 10, '#fff', 'center', 'rgba(0,0,0,0.45)');
+      var hc = wzX + 19;
+      for (var di = 0; di < wzDoors.length; di++){
+        var d = wzDoors[di], dx = d.cx;
+        if (d.back){
+          // the wooden door back down to Level 2
+          ctx.fillStyle = '#8a5a2b'; ctx.fillRect(dx - 30, CGY - 106, 60, 106);
+          ctx.fillStyle = '#74491f'; ctx.fillRect(dx - 30, CGY - 106, 60, 7); ctx.fillRect(dx - 30, CGY - 56, 60, 5); ctx.fillRect(dx - 30, CGY - 7, 60, 7);
+          ctx.fillRect(dx - 4, CGY - 106, 5, 106);
+          ctx.fillStyle = '#ffd83d'; ctx.fillRect(dx + 17, CGY - 52, 5, 5);
+          text('▼ BACK', dx, CGY - 148, 10.5, '#fff', 'center', 'rgba(0,0,0,0.5)');
+          text(d.label, dx, CGY - 130, 9.5, '#ffd83d', 'center', 'rgba(0,0,0,0.5)');
+        } else {
+          // a golden warp silo, same look as the field silos
+          ctx.fillStyle = '#c9971f'; ctx.fillRect(dx - 36, CGY - 168, 72, 168);
+          ctx.fillStyle = '#e3b52e'; ctx.fillRect(dx - 36, CGY - 168, 18, 168);
+          ctx.fillStyle = '#a87c17'; ctx.fillRect(dx - 6, CGY - 168, 4, 168); ctx.fillRect(dx + 18, CGY - 168, 4, 168);
+          ctx.fillStyle = '#8a5a2b'; ctx.beginPath(); ctx.arc(dx, CGY - 168, 36, Math.PI, 0); ctx.fill();
+          ctx.fillStyle = '#ffd83d'; ctx.fillRect(dx - 3, CGY - 216, 6, 13);
+          ctx.fillStyle = '#4a2f12'; ctx.fillRect(dx - 15, CGY - 62, 30, 62);
+          ctx.fillStyle = '#ffd83d'; ctx.fillRect(dx + 7, CGY - 32, 4, 4);
+          text('WARP', dx, CGY - 138, 10, '#fff', 'center', 'rgba(0,0,0,0.45)');
+          text('CORN WARP ' + (di), dx, CGY - 246, 9, '#fff', 'center', 'rgba(0,0,0,0.5)');
+          text(d.label, dx, CGY - 228, 14, '#ffd83d', 'center', 'rgba(0,0,0,0.55)');
+        }
+        // the prompt for whichever door the hero is standing at
+        if (Math.abs(hc - dx) < 42){
+          var bob2 = Math.sin(frame * 0.15) * 3;
+          text('▼', dx, CGY + 44 + bob2, 13, '#ffd83d', 'center', 'rgba(0,0,0,0.5)');
+          text(d.back ? 'BACK TO ' + d.label : 'WARP TO ' + d.label, dx, CGY + 64 + bob2, 9.5, '#fff', 'center', 'rgba(0,0,0,0.5)');
+        }
+      }
+      // the hero, walking the clouds (feet rest on the cloud line)
+      var wzLegs = (keys.left || keys.right) ? (Math.floor(frame / 9) % 2 ? 'walk' : 'stand') : 'stand';
+      drawHeroSprite(heroIdx, wzX - 5, CGY - 42, 3, wzFace, wzLegs, player && player.power);
+    }
     function drawMeal(){
       // farmhouse interior
       ctx.fillStyle = '#8a5a2b'; ctx.fillRect(0, 0, VW, VH);
@@ -3253,6 +3586,7 @@
       else if (state === 'moonwarp') drawMoonWarp();
       else if (state === 'cookietalk') drawCookieTalk();
       else if (state === 'congrats') drawCongrats();
+      else if (state === 'warpzone') drawWarpZone();
       else if (state === 'over') drawOver();
       else if (state === 'win') drawWin();
       else drawWorld();
@@ -3271,7 +3605,7 @@
     }
     updateHUD();
     syncChrome();
-    if (window.Hub) { Hub.menuButton(); }
+    if (window.Hub) Hub.menuButton();
     requestAnimationFrame(loop);
     </script>
   </body>
