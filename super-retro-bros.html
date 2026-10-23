@@ -1175,7 +1175,7 @@
       updateHUD();
       if (lives <= 0){
         state = 'over'; stateTimer = 0; runActive = false;
-        if(window.Hub)Hub.submitScore('super-retro-bros',score);
+        if (window.Hub) Hub.submitScore('super-retro-bros', score);
         dbg('GAME OVER on level ' + levelNum + ' — final score ' + score);
         musicStop(); sfx('over');
       } else {
@@ -1652,7 +1652,7 @@
             // the SUPER COMBINE is down — NOW the farm is saved, and
             // the win finale runs exactly as it always has
             state = 'win'; stateTimer = 0; runActive = false;
-            if(window.Hub)Hub.submitScore('super-retro-bros',score);
+            if (window.Hub) Hub.submitScore('super-retro-bros', score);
             musicStop(); sfx('win');
           } else {
             // PHASE 2 (Ryan): the first Combine's wreck sets off a
@@ -2365,7 +2365,12 @@
       levelOverlay.classList.remove('hidden');
     }
     function closeLevelSelect(resume){
+      var wasOpen = !levelOverlay.classList.contains('hidden');
       levelOverlay.classList.add('hidden');
+      // The GO path logs its own jump in goToLevel; record the cancel /
+      // backdrop close here so the Debug Log shows the card closing too
+      // (a close previously left no entry at all).
+      if (wasOpen && resume) dbg('CHEAT: level select closed — cancelled, back to the game untouched');
       if (resume && levelSelectPaused && paused) togglePause();
       levelSelectPaused = false;
     }
@@ -2388,7 +2393,16 @@
     }
     document.getElementById('levelGo').addEventListener('click', function(){ audioInit(); goToLevel(); });
     document.getElementById('levelCancel').addEventListener('click', function(){ closeLevelSelect(true); });
-    levelOverlay.addEventListener('click', function(e){ if (e.target === levelOverlay) closeLevelSelect(true); });
+    /* Backdrop dismiss requires the press to START on the backdrop.
+       The card opens on the SCORE cell's pointerdown, so the trailing
+       click of that same 5th press lands on the now-visible backdrop —
+       with a plain target check it instantly closed the card (the PC
+       "flash and go away" bug). Arming only on a backdrop pointerdown
+       keeps that stray click from dismissing the card, while a real
+       press-and-release on the backdrop still cancels. */
+    var levelBackdropArmed = false;
+    levelOverlay.addEventListener('pointerdown', function(e){ levelBackdropArmed = (e.target === levelOverlay); });
+    levelOverlay.addEventListener('click', function(e){ if (e.target === levelOverlay && levelBackdropArmed){ levelBackdropArmed = false; closeLevelSelect(true); } });
     document.getElementById('hudScoreCell').addEventListener('pointerdown', function(e){
       e.preventDefault();
       audioInit();
@@ -3726,7 +3740,7 @@
     }
     updateHUD();
     syncChrome();
-    if(window.Hub)Hub.menuButton();
+    if (window.Hub) Hub.menuButton();
     requestAnimationFrame(loop);
     </script>
   </body>
