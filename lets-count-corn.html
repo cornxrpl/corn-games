@@ -1,0 +1,2250 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Let&rsquo;s Count Corn</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        color-scheme: light;
+        --sky1: #6ec3f7;
+        --sky2: #d8f3ff;
+        --hill1: #93d17c;
+        --hill2: #6cb85c;
+        --soil1: #a06a35;
+        --soil2: #7c4f27;
+        --furrow: #65401f;
+        --ink: #26331d;
+        --card: #fffdf4;
+        --dock: #fffdf4;
+        --page: #bfe8fb;
+        --btn-plant: #58a34c;
+        --btn-water: #2f9fd8;
+        --btn-sun: #f2a71b;
+        --btn-harvest: #ef7d1a;
+        --shadow: rgba(38, 51, 29, 0.22);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          color-scheme: dark;
+          --sky1: #2e3a63;
+          --sky2: #77608f;
+          --hill1: #3e7d46;
+          --hill2: #356e3c;
+          --soil1: #6e4a2a;
+          --soil2: #54371e;
+          --furrow: #422b15;
+          --ink: #f4efdf;
+          --card: #263046;
+          --dock: #263046;
+          --page: #1c2438;
+          --shadow: rgba(0, 0, 0, 0.45);
+        }
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        font-family: "Fredoka", "Comic Sans MS", "Chalkboard SE", system-ui, sans-serif;
+        background: var(--page);
+        color: var(--ink);
+        -webkit-tap-highlight-color: transparent;
+        overflow: hidden;
+      }
+      button {
+        font-family: inherit;
+        color: inherit;
+        touch-action: manipulation;
+        user-select: none;
+        -webkit-user-select: none;
+        cursor: pointer;
+      }
+      button:focus-visible { outline: 4px solid #ffd94d; outline-offset: 2px; }
+      .hidden { display: none !important; }
+      .off { display: none !important; }
+
+      .screen {
+        height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      /* ---------- Header band (title art on the one screen) ---------- */
+      .header-band {
+        width: 100%;
+        padding: calc(8px + env(safe-area-inset-top)) 12px 0;
+        display: flex;
+        justify-content: center;
+      }
+      .header-art {
+        width: min(560px, 100%);
+        height: clamp(74px, 15dvh, 128px);
+        object-fit: cover;
+        object-position: center 62%;
+        border-radius: 20px;
+        box-shadow: 0 6px 18px var(--shadow);
+        display: block;
+      }
+
+      /* ---------- The one screen ---------- */
+      #gameScreen {
+        padding: 0;
+        background: linear-gradient(180deg, var(--sky1), var(--sky2) 78%);
+      }
+      .topbar {
+        width: 100%;
+        position: relative;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+      }
+      /* Persistent yellow "Back to menu" — top-left of the top row, the
+         same yellow pill as the other Corn Games. On narrow phones the
+         title drops to its own full-width line under the button row, so
+         Back + Sound + Menu always fit the top row with no overlap. */
+      #backMenuBtn {
+        flex: 0 0 auto;
+        min-height: 56px;
+        padding: 8px 16px;
+        border-radius: 999px;
+        border: 2px solid #d9a800;
+        background: #ffd21a;
+        color: #241a00;
+        box-shadow: 0 3px 10px var(--shadow);
+        font-size: 17px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+      #backMenuBtn:active { transform: translateY(2px); }
+      .game-title {
+        margin: 0;
+        flex: 1 1 auto;
+        min-width: 0;
+        font-size: clamp(28px, 6.4vw, 40px);
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        color: #2e7031;
+        text-shadow: 0 2px 0 rgba(255, 255, 255, 0.55);
+        white-space: nowrap;
+      }
+      @media (max-width: 900px) {
+        .game-title { font-size: 30px; }
+        .top-btn { font-size: 16px; padding: 8px 12px; }
+        #backMenuBtn { font-size: 15.5px; padding: 8px 13px; }
+      }
+      @media (prefers-color-scheme: dark) {
+        .game-title { color: #a5dd90; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35); }
+      }
+      .top-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 56px;
+        padding: 8px 18px;
+        border-radius: 999px;
+        border: none;
+        background: var(--card);
+        box-shadow: 0 3px 10px var(--shadow);
+        font-size: 19px;
+        font-weight: 600;
+      }
+      .top-btn .ic { width: 26px; height: 26px; }
+      .topbar-right { display: flex; gap: 10px; flex: 0 0 auto; }
+      .icon-only { padding: 8px 14px; }
+      .top-btn { white-space: nowrap; flex: 0 0 auto; }
+      /* Phone widths: icon-only Sound/Menu, Back keeps its label, and the
+         title takes its own full-width line under the button row — so the
+         top row (Back + Sound + Menu) fits at 390px with no overlap or
+         horizontal overflow. */
+      @media (max-width: 640px) {
+        .game-title { font-size: 27px; order: 3; flex: 1 1 100%; text-align: center; }
+        .topbar { gap: 6px; padding: 8px 10px; }
+        .topbar-right { gap: 8px; order: 2; margin-left: auto; }
+        #backMenuBtn { order: 1; min-height: 52px; font-size: 14.5px; padding: 8px 12px; }
+        .top-btn { min-height: 52px; padding: 8px 13px; }
+        .top-btn span { display: none; }
+      }
+
+      .scene-wrap {
+        position: relative;
+        flex: 1 1 auto;
+        width: 100%;
+        min-height: 0;
+      }
+      #scene { width: 100%; height: 100%; display: block; }
+
+      #bigNumber {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: clamp(120px, 34vw, 210px);
+        font-weight: 700;
+        color: #ffb703;
+        text-shadow: 0 6px 0 #e07b00, 0 12px 30px rgba(0,0,0,0.3);
+        pointer-events: none;
+        opacity: 0;
+      }
+      #bigNumber.show { animation: numPop 1s ease both; }
+      @keyframes numPop {
+        0% { opacity: 0; transform: scale(0.3); }
+        25% { opacity: 1; transform: scale(1.18); }
+        45% { transform: scale(1); }
+        80% { opacity: 1; }
+        100% { opacity: 0; transform: scale(1.05); }
+      }
+
+      #confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+      #confetti i {
+        position: absolute;
+        top: -26px;
+        display: block;
+        animation-name: confFall;
+        animation-timing-function: linear;
+        animation-fill-mode: forwards;
+      }
+      @keyframes confFall {
+        to { transform: translateY(108vh) rotate(680deg); }
+      }
+
+      .fly-ear {
+        position: absolute;
+        pointer-events: none;
+        z-index: 5;
+        transform: translate(-50%, -50%);
+      }
+      .fly-ear svg { width: 100%; height: 100%; display: block; }
+
+      /* ---------- Dock ---------- */
+      .dock {
+        width: 100%;
+        background: var(--dock);
+        box-shadow: 0 -6px 22px var(--shadow);
+        border-radius: 26px 26px 0 0;
+        padding: 10px 16px calc(14px + env(safe-area-inset-bottom));
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+      }
+      .steps {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        min-height: 30px;
+      }
+      .steps .step {
+        width: 30px; height: 30px;
+        opacity: 0.3;
+        transition: opacity 0.3s, transform 0.3s;
+        display: flex; align-items: center; justify-content: center;
+      }
+      .steps .step svg { width: 100%; height: 100%; }
+      .steps .step.now { opacity: 1; transform: scale(1.3); }
+      .steps .step.done { opacity: 0.75; }
+      .steps .arrow { font-size: 15px; opacity: 0.4; font-weight: 700; }
+      #promptText {
+        margin: 0;
+        font-size: clamp(22px, 5.2vw, 30px);
+        font-weight: 600;
+        text-align: center;
+        line-height: 1.15;
+      }
+      #actionBtn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        min-height: 102px;
+        width: min(520px, 100%);
+        padding: 12px 24px;
+        border: none;
+        border-radius: 30px;
+        color: #fff;
+        font-size: clamp(27px, 6vw, 36px);
+        font-weight: 700;
+        background: var(--btn-plant);
+        box-shadow: 0 7px 0 rgba(0,0,0,0.22), 0 14px 24px var(--shadow);
+        animation: btnWiggle 1.6s ease-in-out infinite;
+      }
+      #actionBtn:active { transform: translateY(4px); }
+      #actionBtn.busy { animation: none; opacity: 0.75; pointer-events: none; }
+      #actionBtn .ic { width: 56px; height: 56px; flex: 0 0 auto; }
+      #actionBtn[data-color="plant"] { background: var(--btn-plant); }
+      #actionBtn[data-color="water"] { background: var(--btn-water); }
+      #actionBtn[data-color="sun"] { background: var(--btn-sun); }
+      #actionBtn[data-color="harvest"] { background: var(--btn-harvest); }
+      @keyframes btnWiggle {
+        0%, 100% { transform: rotate(0deg) scale(1); }
+        25% { transform: rotate(-1.4deg) scale(1.03); }
+        75% { transform: rotate(1.4deg) scale(1.03); }
+      }
+
+      #basketBar {
+        width: min(560px, 100%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+      }
+      #basketRow {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        max-width: 100%;
+        padding: 12px 14px 14px;
+        border-radius: 20px;
+        background:
+          repeating-linear-gradient(0deg, rgba(0,0,0,0.07) 0 5px, transparent 5px 16px),
+          repeating-linear-gradient(90deg, rgba(255,255,255,0.10) 0 6px, transparent 6px 18px),
+          linear-gradient(180deg, #b57e3e, #96622a);
+        box-shadow: inset 0 4px 10px rgba(0,0,0,0.3), 0 4px 12px var(--shadow);
+      }
+      /* Basket slots sit in rows of at most 10 corns each. Slots flex to
+         share the row's full width (capped per tier), so a full row of 10
+         ALWAYS fits inside the brown basket and the screen — on iPhone and
+         iPad alike — instead of spilling past the basket's rounded edges. */
+      #basketRow .brow {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        width: 100%;
+      }
+      #basketRow.many .brow { gap: 6px; }
+      #basketRow.lots .brow { gap: 6px; }
+      .slot {
+        position: relative;
+        flex: 1 1 0;
+        min-width: 0;
+        max-width: 68px;
+        aspect-ratio: 68 / 84;
+        border-radius: 14px;
+        background: rgba(0,0,0,0.16);
+        border: 3px dashed rgba(255,255,255,0.4);
+        display: flex; align-items: center; justify-content: center;
+        padding: 0;
+      }
+      button.slot { cursor: default; }
+      .slot.filled { border-style: solid; border-color: rgba(255,255,255,0.65); background: rgba(255,255,255,0.14); }
+      .slot svg { width: 65%; height: 79%; display: block; }
+      .slot.pop svg { animation: slotPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+      @keyframes slotPop { from { transform: scale(0.2); } to { transform: scale(1); } }
+      #basketRow.many { gap: 7px; padding: 10px 10px 12px; }
+      #basketRow.many .slot { max-width: 48px; aspect-ratio: 48 / 60; border-radius: 12px; }
+      #basketRow.lots { gap: 6px; padding: 9px 8px 11px; }
+      #basketRow.lots .slot { max-width: 42px; aspect-ratio: 42 / 54; border-radius: 10px; }
+      #basketRow.lots .slot .badge { min-width: 30px; height: 30px; font-size: 17px; top: -8px; right: -6px; border-width: 2px; }
+      #roundLabel {
+        margin: 0;
+        font-size: 17px;
+        font-weight: 700;
+        letter-spacing: 0.2px;
+        opacity: 0.85;
+        text-align: center;
+      }
+      #basketRow.counting .slot.filled { cursor: pointer; animation: slotWiggle 1.2s ease-in-out infinite; }
+      @keyframes slotWiggle { 0%,100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
+      .slot .badge {
+        position: absolute;
+        top: -12px; right: -10px;
+        min-width: 38px; height: 38px;
+        padding: 0 6px;
+        border-radius: 999px;
+        background: #ffb703;
+        color: #5b3400;
+        border: 3px solid #fff;
+        font-size: 22px;
+        font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+        animation: slotPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+      }
+      .slot.counted { animation: none; }
+      .big-dock-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 84px;
+        padding: 12px 34px;
+        border: none;
+        border-radius: 999px;
+        font-size: clamp(25px, 5.6vw, 33px);
+        font-weight: 700;
+        color: #fff;
+        box-shadow: 0 6px 0 rgba(0,0,0,0.22), 0 12px 22px var(--shadow);
+        animation: btnWiggle 1.6s ease-in-out infinite;
+      }
+      .big-dock-btn:active { transform: translateY(4px); }
+      #countBtn { background: #ef7d1a; }
+      #againBtn { background: #43a047; }
+      .big-dock-btn .ic { width: 44px; height: 44px; }
+
+      /* ---------- Layout preview bar (hidden barn-tap cheat) ---------- */
+      #previewBar {
+        width: min(560px, 100%);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      #previewText { font-size: 19px; font-weight: 700; opacity: 0.85; white-space: nowrap; }
+      .preview-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 62px;
+        padding: 10px 22px;
+        border: none;
+        border-radius: 999px;
+        font-size: 22px;
+        font-weight: 700;
+        color: #fff;
+        box-shadow: 0 5px 0 rgba(0,0,0,0.22), 0 10px 18px var(--shadow);
+        white-space: nowrap;
+      }
+      .preview-btn:active { transform: translateY(3px); }
+      #previewClose { background: #8a8f7d; }
+      #previewNext { background: #ef7d1a; }
+      @media (max-width: 480px) {
+        .preview-btn { font-size: 19px; padding: 10px 15px; min-height: 56px; }
+        #previewText { font-size: 15.5px; }
+      }
+
+      /* ---------- How to Play ---------- */
+      .overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(20, 26, 16, 0.55);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        z-index: 20;
+      }
+      .sheet {
+        background: var(--card);
+        color: var(--ink);
+        border-radius: 26px;
+        width: min(560px, 100%);
+        max-height: 92dvh;
+        overflow-y: auto;
+        padding: 22px 24px 24px;
+        box-shadow: 0 18px 40px rgba(0,0,0,0.35);
+      }
+      .sheet h2 { margin: 0 0 2px; font-size: 32px; font-weight: 700; }
+      .sheet .for { margin: 0 0 14px; font-size: 17px; opacity: 0.75; font-weight: 600; }
+      .how-step { display: flex; gap: 14px; align-items: flex-start; margin: 0 0 14px; }
+      .how-step .hic {
+        flex: 0 0 auto;
+        width: 54px; height: 54px;
+        border-radius: 16px;
+        background: rgba(127, 176, 105, 0.22);
+        display: flex; align-items: center; justify-content: center;
+      }
+      .how-step .hic svg { width: 38px; height: 38px; }
+      .how-step p { margin: 4px 0 0; font-size: 19px; line-height: 1.35; font-weight: 500; }
+      .how-step p b { font-weight: 700; }
+      .sheet .note { font-size: 17px; line-height: 1.4; opacity: 0.85; margin: 4px 0 18px; font-weight: 500; }
+      #howClose {
+        width: 100%;
+        min-height: 68px;
+        border: none;
+        border-radius: 999px;
+        background: #43a047;
+        color: #fff;
+        font-size: 26px;
+        font-weight: 700;
+        box-shadow: 0 5px 0 #2e7031;
+      }
+      /* ---------- Count-aloud popup (same one screen, overlay) ---------- */
+      .count-popup-sheet { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+      .count-popup-sheet .hic-big {
+        width: 84px; height: 84px; border-radius: 24px;
+        background: rgba(239,125,26,0.16);
+        display: flex; align-items: center; justify-content: center;
+      }
+      .count-popup-sheet .hic-big svg { width: 58px; height: 58px; }
+      .count-popup-msg {
+        margin: 0;
+        font-size: clamp(26px, 6vw, 36px);
+        font-weight: 700;
+        line-height: 1.25;
+      }
+      .count-popup-sub {
+        margin: 0;
+        font-size: 19px;
+        line-height: 1.35;
+        font-weight: 500;
+        opacity: 0.85;
+      }
+      #countPopupBtn {
+        width: 100%;
+        min-height: 96px;
+        margin-top: 6px;
+        border: none;
+        border-radius: 999px;
+        background: #ef7d1a;
+        color: #fff;
+        font-size: clamp(28px, 6.4vw, 36px);
+        font-weight: 700;
+        box-shadow: 0 6px 0 rgba(0,0,0,0.22), 0 12px 22px var(--shadow);
+        animation: btnWiggle 1.6s ease-in-out infinite;
+        display: inline-flex; align-items: center; justify-content: center; gap: 12px;
+      }
+      #countPopupBtn:active { transform: translateY(4px); }
+      #countPopupBtn .ic { width: 46px; height: 46px; }
+
+      /* ---------- Hamburger menu ---------- */
+      .menu-panel {
+        position: absolute;
+        top: calc(100% + 6px);
+        right: 12px;
+        z-index: 25;
+        background: var(--card);
+        color: var(--ink);
+        border-radius: 18px;
+        box-shadow: 0 14px 34px rgba(0,0,0,0.35);
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 236px;
+      }
+      .menu-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 60px;
+        padding: 10px 16px;
+        border: none;
+        border-radius: 12px;
+        background: transparent;
+        font-size: 21px;
+        font-weight: 600;
+        text-align: left;
+      }
+      .menu-item:active { background: rgba(127, 176, 105, 0.25); }
+      .menu-item .ic { width: 28px; height: 28px; flex: 0 0 auto; }
+
+      /* ---------- Debug log ---------- */
+      .debug-box {
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 13.5px;
+        line-height: 1.55;
+        background: rgba(38, 51, 29, 0.08);
+        border-radius: 14px;
+        padding: 12px 14px;
+        max-height: 46dvh;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+        margin: 0 0 16px;
+      }
+      @media (prefers-color-scheme: dark) {
+        .debug-box { background: rgba(0, 0, 0, 0.35); }
+      }
+      .sheet > .sheet-btn { width: 100%; }
+
+      /* ---------- Go to a round (cheat) ---------- */
+      .cheat-input {
+        width: 100%;
+        min-height: 76px;
+        border: 3px solid rgba(127, 176, 105, 0.55);
+        border-radius: 18px;
+        padding: 8px 18px;
+        font-family: inherit;
+        font-size: 30px;
+        font-weight: 700;
+        text-align: center;
+        color: var(--ink);
+        background: var(--card);
+        margin: 4px 0 6px;
+      }
+      .cheat-input:focus-visible { outline: 4px solid #ffd94d; outline-offset: 2px; }
+      .cheat-msg { min-height: 26px; margin: 0 0 10px; font-size: 18px; font-weight: 600; color: #c2452d; text-align: center; }
+      .sheet-btn-row { display: flex; gap: 10px; }
+      .sheet-btn {
+        flex: 1 1 0;
+        min-height: 68px;
+        border: none;
+        border-radius: 999px;
+        font-size: 25px;
+        font-weight: 700;
+        color: #fff;
+        background: #43a047;
+        box-shadow: 0 5px 0 #2e7031;
+      }
+      .sheet-btn.secondary { background: #8a8f7d; box-shadow: 0 5px 0 #636657; }
+
+      /* ---------- Home Screen sheet: compact so EVERY control fits ----------
+         The start-choice sheet stacks a title, subtitle, a big start
+         button, a round-number input, and the "Start at That Round!"
+         button. At full sizes that stack overflowed short phone
+         viewports, pushing the last button off the bottom edge. These
+         tighter sizes keep the whole sheet on screen at once, no
+         scrolling. */
+      .start-sheet {
+        padding: 16px 20px 18px;
+        gap: 9px;
+        max-height: calc(100dvh - 24px);
+        max-height: calc(100% - 16px);
+      }
+      .start-sheet .hic-big { width: 56px; height: 56px; border-radius: 18px; }
+      .start-sheet .hic-big svg { width: 38px; height: 38px; }
+      .start-sheet h2 { font-size: 27px; }
+      .start-sheet .count-popup-sub { font-size: 17px; line-height: 1.3; }
+      .start-sheet .sheet-btn { min-height: 56px; font-size: 22px; }
+      .start-sheet .for { font-size: 16px; }
+      .start-sheet .cheat-input { min-height: 56px; font-size: 26px; margin: 2px 0; }
+      .start-sheet .cheat-msg { min-height: 20px; margin: 0; font-size: 16px; }
+
+      /* ---------- Scene SVG animation ---------- */
+      #plantG {
+        transform: scale(var(--pScale, 0.5));
+        transform-origin: 400px 486px;
+        transition: transform 1.1s cubic-bezier(0.34, 1.35, 0.64, 1);
+      }
+      .sway { animation: sway 4.5s ease-in-out infinite; transform-origin: 400px 486px; }
+      @keyframes sway { 0%, 100% { transform: rotate(-1.1deg); } 50% { transform: rotate(1.1deg); } }
+      .pop-in { animation: popIn 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both; transform-box: fill-box; transform-origin: 50% 100%; }
+      @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
+      .ear-wiggle { animation: earWiggle 1.1s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+      @keyframes earWiggle { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+      .rays { transform-origin: 660px 108px; animation: spin 48s linear infinite; }
+      #skySun.beaming .rays { animation-duration: 3.2s; }
+      #skySun.beaming .sun-glow { opacity: 0.65; }
+      .sun-glow { transition: opacity 0.5s; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .drift { animation: drift 7s ease-in-out infinite alternate; }
+      .drift2 { animation: drift 9s ease-in-out infinite alternate-reverse; }
+      @keyframes drift { from { transform: translateX(-12px); } to { transform: translateX(16px); } }
+      #drops circle { opacity: 0; }
+      #drops.go circle { animation: dropFall 0.55s ease-in infinite; }
+      @keyframes dropFall {
+        0% { transform: translateY(0); opacity: 0; }
+        18% { opacity: 1; }
+        82% { opacity: 1; }
+        100% { transform: translateY(108px); opacity: 0; }
+      }
+      .spark { transform-box: fill-box; transform-origin: 50% 50%; animation: twinkle 0.9s ease-in-out infinite alternate; }
+      @keyframes twinkle { from { transform: scale(0.4) rotate(0deg); opacity: 0.35; } to { transform: scale(1.15) rotate(25deg); opacity: 1; } }
+      .tappable { cursor: pointer; }
+
+      /* ---------- Round 20 finale: flashing, blinking celebration ---------- */
+      #finaleOverlay { z-index: 90; }
+      #finaleOverlay:not(.hidden) { animation: finaleFlash 0.9s steps(1, end) infinite; }
+      @keyframes finaleFlash {
+        0%, 100% { background: rgba(249, 199, 79, 0.93); }
+        25% { background: rgba(67, 170, 71, 0.93); }
+        50% { background: rgba(255, 112, 166, 0.93); }
+        75% { background: rgba(78, 178, 255, 0.93); }
+      }
+      .finale-sheet { text-align: center; }
+      .finale-title {
+        margin: 0 0 6px; font-size: 42px; font-weight: 700; line-height: 1.15;
+        animation: finaleBlink 0.55s ease-in-out infinite alternate;
+      }
+      @keyframes finaleBlink {
+        from { opacity: 1; transform: scale(1); }
+        to { opacity: 0.25; transform: scale(0.94); }
+      }
+
+      /* ---------- Title screen: "Learn to Count" picture + Enter Game ---------- */
+      #titleOverlay { z-index: 30; background: linear-gradient(180deg, var(--sky1), var(--sky2)); }
+      .title-card {
+        width: min(560px, 100%);
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
+      }
+      .title-art-full {
+        display: block;
+        width: 100%;
+        height: auto;
+        border-radius: 26px;
+        box-shadow: 0 18px 40px rgba(0,0,0,0.35);
+      }
+      /* Invisible hotspot over the red barn in the title art. Tapping it
+         5 times opens the hidden layout preview (see the script). It is
+         not labeled or mentioned anywhere on screen. */
+      .title-art-wrap { position: relative; }
+      #barnHotspot {
+        position: absolute;
+        left: 11.5%;
+        top: 52.5%;
+        width: 20%;
+        height: 25%;
+        background: transparent;
+        border: none;
+        border-radius: 12px;
+        padding: 0;
+      }
+      /* The Enter Game button sits BELOW the title art in its own block —
+         never overlaid on the picture, so the barn, stalks, and ears stay
+         fully visible at phone width. */
+      #enterGameBtn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        width: 100%;
+        min-height: 96px;
+        padding: 12px 44px;
+        border: none;
+        border-radius: 999px;
+        background: #43a047;
+        color: #fff;
+        font-size: clamp(28px, 6.4vw, 38px);
+        font-weight: 700;
+        white-space: nowrap;
+        box-shadow: 0 6px 0 rgba(0,0,0,0.25), 0 14px 26px rgba(0,0,0,0.35);
+        animation: enterGlow 1.6s ease-in-out infinite;
+      }
+      #enterGameBtn:active { transform: translateY(4px); }
+      #enterGameBtn .ic { width: 48px; height: 48px; flex: 0 0 auto; }
+      /* Glow pulse only — the button box itself never moves or resizes,
+         so it stays a steady, easy tap target. */
+      @keyframes enterGlow {
+        0%, 100% { box-shadow: 0 6px 0 rgba(0,0,0,0.25), 0 14px 26px rgba(0,0,0,0.35), 0 0 0 0 rgba(255, 217, 77, 0); }
+        50% { box-shadow: 0 6px 0 rgba(0,0,0,0.25), 0 14px 26px rgba(0,0,0,0.35), 0 0 0 12px rgba(255, 217, 77, 0.55); }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .rays, .drift, .drift2, .sway, #actionBtn, .big-dock-btn, .ear-wiggle, #basketRow.counting .slot.filled, #enterGameBtn { animation: none !important; }
+        #finaleOverlay:not(.hidden), .finale-title { animation: none !important; }
+        #plantG { transition-duration: 0.3s; }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Reusable pictograms -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <defs>
+        <symbol id="i-seed" viewBox="0 0 64 64">
+          <path d="M32 24 C31 15 27 9 20 5 C28 5 34 11 35 19 Z" fill="#66bb6a"/>
+          <path d="M33 23 C35 15 40 10 47 8 C45 16 40 21 34 23 Z" fill="#43a047"/>
+          <path d="M32 26 L32 34" stroke="#43a047" stroke-width="4" stroke-linecap="round"/>
+          <ellipse cx="32" cy="44" rx="13" ry="16" fill="#b07a3f" stroke="#7c4f27" stroke-width="3"/>
+          <path d="M24 38 C28 34 36 34 40 38" stroke="#d9a45b" stroke-width="3" fill="none" stroke-linecap="round"/>
+        </symbol>
+        <symbol id="i-can" viewBox="0 0 64 64">
+          <path d="M12 22 C20 10 40 10 48 22" stroke="#1b7f9e" stroke-width="5" fill="none" stroke-linecap="round"/>
+          <rect x="12" y="22" width="34" height="32" rx="7" fill="#2aa7c4" stroke="#1b7f9e" stroke-width="3"/>
+          <path d="M46 30 L60 22 L61 30 L47 38 Z" fill="#2aa7c4" stroke="#1b7f9e" stroke-width="3" stroke-linejoin="round"/>
+          <circle cx="52" cy="14" r="2.6" fill="#4db2ff"/>
+          <circle cx="58" cy="9" r="2.6" fill="#4db2ff"/>
+          <circle cx="59" cy="16" r="2.6" fill="#4db2ff"/>
+        </symbol>
+        <symbol id="i-sun" viewBox="0 0 64 64">
+          <g stroke="#f5a623" stroke-width="5" stroke-linecap="round">
+            <line x1="32" y1="4" x2="32" y2="12"/><line x1="32" y1="52" x2="32" y2="60"/>
+            <line x1="4" y1="32" x2="12" y2="32"/><line x1="52" y1="32" x2="60" y2="32"/>
+            <line x1="12" y1="12" x2="18" y2="18"/><line x1="46" y1="46" x2="52" y2="52"/>
+            <line x1="52" y1="12" x2="46" y2="18"/><line x1="18" y1="46" x2="12" y2="52"/>
+          </g>
+          <circle cx="32" cy="32" r="13" fill="#ffcf3f" stroke="#f5a623" stroke-width="3"/>
+          <circle cx="27" cy="30" r="2.2" fill="#7a4a12"/><circle cx="37" cy="30" r="2.2" fill="#7a4a12"/>
+          <path d="M26 36 Q32 41 38 36" stroke="#7a4a12" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+        </symbol>
+        <symbol id="i-corn" viewBox="0 0 64 96">
+          <path d="M32 88 C14 82 6 64 8 44 C20 56 28 70 32 88 Z" fill="#43a047"/>
+          <path d="M32 88 C50 82 58 64 56 44 C44 56 36 70 32 88 Z" fill="#4caf50"/>
+          <ellipse cx="32" cy="38" rx="15" ry="27" fill="#ffc93c" stroke="#eda812" stroke-width="3"/>
+          <path d="M24 20 C22 34 22 46 24 58 M40 20 C42 34 42 46 40 58 M32 12 L32 64" stroke="rgba(160,90,0,0.35)" stroke-width="2.4" fill="none"/>
+          <path d="M27 12 C25 5 21 1 16 0 M37 12 C39 5 43 1 48 0" stroke="#b08954" stroke-width="3" fill="none" stroke-linecap="round"/>
+        </symbol>
+        <symbol id="i-q" viewBox="0 0 64 64">
+          <circle cx="32" cy="32" r="27" fill="#2f9fd8"/>
+          <text x="32" y="45" text-anchor="middle" font-family="Fredoka, sans-serif" font-size="36" font-weight="700" fill="#fff">?</text>
+        </symbol>
+        <symbol id="i-sound-on" viewBox="0 0 64 64">
+          <path d="M8 26 L20 26 L34 14 L34 50 L20 38 L8 38 Z" fill="#58a34c" stroke="#3d7a35" stroke-width="3" stroke-linejoin="round"/>
+          <path d="M42 22 C47 27 47 37 42 42 M49 16 C57 24 57 40 49 48" stroke="#58a34c" stroke-width="5" fill="none" stroke-linecap="round"/>
+        </symbol>
+        <symbol id="i-sound-off" viewBox="0 0 64 64">
+          <path d="M8 26 L20 26 L34 14 L34 50 L20 38 L8 38 Z" fill="#9a9a8e" stroke="#6f6f64" stroke-width="3" stroke-linejoin="round"/>
+          <path d="M44 24 L58 40 M58 24 L44 40" stroke="#d64541" stroke-width="6" stroke-linecap="round"/>
+        </symbol>
+        <symbol id="i-count" viewBox="0 0 64 64">
+          <rect x="6" y="10" width="52" height="44" rx="12" fill="#ef7d1a"/>
+          <text x="32" y="44" text-anchor="middle" font-family="Fredoka, sans-serif" font-size="24" font-weight="700" fill="#fff">123</text>
+        </symbol>
+        <symbol id="i-menu" viewBox="0 0 64 64">
+          <path d="M12 20 H52 M12 32 H52 M12 44 H52" stroke="currentColor" stroke-width="6" stroke-linecap="round" fill="none"/>
+        </symbol>
+        <symbol id="i-debug" viewBox="0 0 64 64">
+          <rect x="14" y="8" width="36" height="48" rx="6" fill="#577590"/>
+          <path d="M22 22 H42 M22 32 H42 M22 42 H34" stroke="#fff" stroke-width="4" stroke-linecap="round" fill="none"/>
+        </symbol>
+        <g id="miniCorn">
+          <path d="M0 0 L0 -46" stroke="#3e8e3e" stroke-width="5" stroke-linecap="round"/>
+          <path d="M0 -18 C-14 -20 -20 -28 -22 -38 C-12 -36 -4 -28 0 -18 Z" fill="#4caf50"/>
+          <path d="M0 -28 C14 -30 20 -38 22 -48 C12 -46 4 -38 0 -28 Z" fill="#43a047"/>
+          <ellipse cx="7" cy="-30" rx="6" ry="11" fill="#f4b942" transform="rotate(18 7 -30)"/>
+        </g>
+        <path id="sparkStar" d="M0 -11 L3 -3 L11 0 L3 3 L0 11 L-3 3 L-11 0 L-3 -3 Z"/>
+      </defs>
+    </svg>
+
+    <!-- THE ONE SCREEN: art, title, farm, and controls all together -->
+    <section id="gameScreen" class="screen">
+      <div class="header-band">
+        <img class="header-art" src="assets/title-art.webp" alt="A sunny cornfield with a smiling sun, a red barn, and happy corn plants" />
+      </div>
+      <div class="topbar">
+        <button id="backMenuBtn" type="button" aria-label="Back to main menu">&larr; Back to menu</button>
+        <h1 class="game-title" id="gameTitle">Let&rsquo;s Count Corn</h1>
+        <div class="topbar-right">
+          <button class="top-btn sound-btn" type="button" aria-label="Turn sound off">
+            <svg class="ic" aria-hidden="true"><use href="#i-sound-on"/></svg>
+            <span>Sound: On</span>
+          </button>
+          <button id="menuBtn" class="top-btn" type="button" aria-label="Menu" aria-haspopup="true" aria-expanded="false">
+            <svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg>
+            <span>Menu</span>
+          </button>
+        </div>
+        <div id="menuPanel" class="menu-panel hidden" role="menu" aria-label="Game menu">
+          <button id="menuHow" class="menu-item" type="button" role="menuitem">
+            <svg class="ic" aria-hidden="true"><use href="#i-q"/></svg>
+            <span>How to Play</span>
+          </button>
+          <button id="menuDebug" class="menu-item" type="button" role="menuitem">
+            <svg class="ic" aria-hidden="true"><use href="#i-debug"/></svg>
+            <span>Debug Log</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="scene-wrap" id="sceneWrap">
+        <svg id="scene" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid meet" role="img" aria-label="A farm field with soil, a barn, and a sunny sky">
+          <defs>
+            <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" style="stop-color: var(--sky1)" />
+              <stop offset="1" style="stop-color: var(--sky2)" />
+            </linearGradient>
+            <linearGradient id="soilGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" style="stop-color: var(--soil1)" />
+              <stop offset="1" style="stop-color: var(--soil2)" />
+            </linearGradient>
+          </defs>
+
+          <rect x="0" y="0" width="800" height="600" fill="url(#skyGrad)" />
+
+          <!-- Sun (tappable during sunshine steps) -->
+          <g id="skySun">
+            <circle class="sun-glow" cx="660" cy="108" r="88" fill="#ffd94d" opacity="0.35" />
+            <g class="rays" stroke="#ffb703" stroke-width="7" stroke-linecap="round">
+              <line x1="660" y1="34" x2="660" y2="14" />
+              <line x1="660" y1="34" x2="660" y2="14" transform="rotate(30 660 108)" />
+              <line x1="660" y1="34" x2="660" y2="14" transform="rotate(60 660 108)" />
+              <line x1="660" y1="34" x2="660" y2="14" transform="rotate(90 660 108)" />
+              <line x1="660" y1="34" x2="660" y2="14" transform="rotate(120 660 108)" />
+              <line x1="660" y1="34" x2="660" y2="14" transform="rotate(150 660 108)" />
+              <line x1="660" y1="34" x2="660" y2="14" transform="rotate(180 660 108)" />
+              <line x1="660" y1="34" x2="660" y2="14" transform="rotate(210 660 108)" />
+              <line x1="660" y1="34" x2="660" y2="14" transform="rotate(240 660 108)" />
+              <line x1="660" y1="34" x2="660" y2="14" transform="rotate(270 660 108)" />
+              <line x1="660" y1="34" x2="660" y2="14" transform="rotate(300 660 108)" />
+              <line x1="660" y1="34" x2="660" y2="14" transform="rotate(330 660 108)" />
+            </g>
+            <circle cx="660" cy="108" r="52" fill="#ffcf3f" stroke="#f5a623" stroke-width="4" />
+            <circle cx="642" cy="100" r="5" fill="#7a4a12" />
+            <circle cx="678" cy="100" r="5" fill="#7a4a12" />
+            <circle cx="629" cy="115" r="7" fill="#ffb37a" opacity="0.85" />
+            <circle cx="691" cy="115" r="7" fill="#ffb37a" opacity="0.85" />
+            <path d="M640 118 Q660 135 680 118" stroke="#7a4a12" stroke-width="5" fill="none" stroke-linecap="round" />
+          </g>
+
+          <!-- Clouds -->
+          <g transform="translate(128,86)"><g class="drift" fill="#ffffff" opacity="0.95">
+            <ellipse cx="0" cy="0" rx="46" ry="25" /><ellipse cx="40" cy="-11" rx="38" ry="22" /><ellipse cx="78" cy="1" rx="42" ry="20" />
+          </g></g>
+          <g transform="translate(428,58) scale(0.8)"><g class="drift2" fill="#ffffff" opacity="0.9">
+            <ellipse cx="0" cy="0" rx="46" ry="25" /><ellipse cx="40" cy="-11" rx="38" ry="22" /><ellipse cx="78" cy="1" rx="42" ry="20" />
+          </g></g>
+          <g transform="translate(238,158) scale(0.6)"><g class="drift" fill="#ffffff" opacity="0.8">
+            <ellipse cx="0" cy="0" rx="46" ry="25" /><ellipse cx="40" cy="-11" rx="38" ry="22" /><ellipse cx="78" cy="1" rx="42" ry="20" />
+          </g></g>
+          <path d="M292 96 Q298 89 304 96 Q310 89 316 96" stroke="#3a5a78" stroke-width="3.5" fill="none" stroke-linecap="round" />
+          <path d="M330 122 Q335 116 340 122 Q345 116 350 122" stroke="#3a5a78" stroke-width="3" fill="none" stroke-linecap="round" />
+
+          <!-- Hills -->
+          <path d="M0 392 C160 330 320 368 480 344 C620 324 720 352 800 336 L800 478 L0 478 Z" style="fill: var(--hill1)" />
+          <path d="M0 428 C200 392 420 420 800 398 L800 486 L0 486 Z" style="fill: var(--hill2)" />
+
+          <!-- Barn -->
+          <g transform="translate(96,318)">
+            <rect x="116" y="6" width="26" height="104" rx="4" fill="#cfd6dd" stroke="#9aa5ad" stroke-width="3" />
+            <path d="M112 10 A17 17 0 0 1 146 10 Z" fill="#9aa5ad" />
+            <rect x="0" y="36" width="104" height="74" fill="#d64541" stroke="#a93226" stroke-width="3" />
+            <path d="M-10 40 L52 -4 L114 40 Z" fill="#8e3b2f" stroke="#71301f" stroke-width="3" stroke-linejoin="round" />
+            <rect x="38" y="68" width="28" height="42" fill="#a93226" stroke="#f2d8c9" stroke-width="3" />
+            <path d="M38 68 L66 110 M66 68 L38 110" stroke="#f2d8c9" stroke-width="3" />
+            <rect x="12" y="48" width="18" height="18" fill="#ffe9a8" stroke="#a93226" stroke-width="3" />
+          </g>
+
+          <!-- Little corn plants in the back -->
+          <use href="#miniCorn" transform="translate(196,444) scale(0.9)" />
+          <use href="#miniCorn" transform="translate(252,450) scale(0.7)" />
+          <use href="#miniCorn" transform="translate(560,446) scale(0.8)" />
+          <use href="#miniCorn" transform="translate(618,452) scale(0.65)" />
+          <use href="#miniCorn" transform="translate(700,444) scale(0.85)" />
+
+          <!-- Fence -->
+          <g>
+            <rect x="556" y="448" width="244" height="8" fill="#bb9059" />
+            <rect x="556" y="468" width="244" height="8" fill="#bb9059" />
+            <rect x="576" y="438" width="10" height="46" fill="#a67c4e" />
+            <rect x="646" y="438" width="10" height="46" fill="#a67c4e" />
+            <rect x="716" y="438" width="10" height="46" fill="#a67c4e" />
+            <rect x="782" y="438" width="10" height="46" fill="#a67c4e" />
+            <rect x="0" y="448" width="72" height="8" fill="#bb9059" />
+            <rect x="0" y="468" width="72" height="8" fill="#bb9059" />
+            <rect x="14" y="438" width="10" height="46" fill="#a67c4e" />
+            <rect x="56" y="438" width="10" height="46" fill="#a67c4e" />
+          </g>
+
+          <!-- Field -->
+          <path d="M0 452 L800 452 L800 600 L0 600 Z" fill="url(#soilGrad)" />
+          <g style="stroke: var(--furrow)" stroke-width="10" fill="none" opacity="0.45" stroke-linecap="round">
+            <path d="M-20 600 C150 545 260 505 340 452" />
+            <path d="M180 600 C300 550 380 505 440 452" />
+            <path d="M330 600 C370 550 395 505 405 452" />
+            <path d="M470 600 C520 552 565 508 600 452" />
+            <path d="M650 600 C695 555 722 508 742 452" />
+          </g>
+
+          <!-- Soil mound -->
+          <g id="moundG">
+            <ellipse cx="400" cy="488" rx="122" ry="26" fill="#65401f" />
+            <ellipse cx="400" cy="480" rx="97" ry="20" fill="#835631" />
+          </g>
+
+          <!-- Seed -->
+          <g id="seedG" class="off">
+            <ellipse cx="400" cy="472" rx="14" ry="10" fill="#b07a3f" stroke="#7c4f27" stroke-width="3" />
+            <path d="M389 469 Q400 463 411 469" stroke="#d9a45b" stroke-width="3" fill="none" stroke-linecap="round" />
+          </g>
+
+          <!-- Sprout -->
+          <g id="sproutG" class="off">
+            <path d="M400 480 C398 466 402 458 400 446" stroke="#43a047" stroke-width="7" fill="none" stroke-linecap="round" />
+            <path d="M400 454 C378 452 366 440 363 425 C382 427 397 438 400 454 Z" fill="#66bb6a" />
+            <path d="M400 454 C422 452 434 440 437 425 C418 427 403 438 400 454 Z" fill="#57a85c" />
+            <circle cx="400" cy="444" r="5.5" fill="#66bb6a" />
+          </g>
+
+          <!-- Big corn plant(s): up to 4 stalks, built by JS — one stalk
+               for every 5 ears this round, never more than 5 ears a stalk -->
+          <g id="plantG" class="off">
+            <g id="plantWrap"></g>
+          </g>
+
+          <!-- Sunshine sparkles -->
+          <g id="sunFx" class="off">
+            <g stroke="#ffd94d" stroke-width="6" stroke-linecap="round" opacity="0.75">
+              <line x1="636" y1="146" x2="440" y2="292" />
+              <line x1="614" y1="160" x2="402" y2="322" />
+              <line x1="660" y1="162" x2="478" y2="252" />
+            </g>
+            <g fill="#ffe066">
+              <g transform="translate(332,296)"><use href="#sparkStar" class="spark" /></g>
+              <g transform="translate(472,258)"><use href="#sparkStar" class="spark" style="animation-delay:0.2s" /></g>
+              <g transform="translate(404,196)"><use href="#sparkStar" class="spark" style="animation-delay:0.4s" /></g>
+              <g transform="translate(348,168)"><use href="#sparkStar" class="spark" style="animation-delay:0.1s" /></g>
+              <g transform="translate(462,352)"><use href="#sparkStar" class="spark" style="animation-delay:0.3s" /></g>
+            </g>
+          </g>
+
+          <!-- Watering can + rain -->
+          <g id="waterCan" class="off" transform="translate(232,296) rotate(-16)">
+            <path d="M14 4 C30 -16 58 -16 72 4" stroke="#1b7f9e" stroke-width="7" fill="none" stroke-linecap="round" />
+            <path d="M4 16 C-12 28 -12 46 4 56" stroke="#1b7f9e" stroke-width="7" fill="none" stroke-linecap="round" />
+            <rect x="0" y="0" width="86" height="62" rx="14" fill="#2aa7c4" stroke="#1b7f9e" stroke-width="3" />
+            <path d="M84 16 L126 40 L118 55 L82 34 Z" fill="#2aa7c4" stroke="#1b7f9e" stroke-width="3" stroke-linejoin="round" />
+            <circle cx="128" cy="48" r="13" fill="#1b7f9e" />
+          </g>
+          <g id="drops" fill="#4db2ff" stroke="#2b8fd6" stroke-width="1.5">
+            <circle cx="338" cy="356" r="6.5" />
+            <circle cx="352" cy="348" r="7.5" style="animation-delay:0.14s" />
+            <circle cx="365" cy="357" r="6" style="animation-delay:0.27s" />
+            <circle cx="344" cy="366" r="5.5" style="animation-delay:0.4s" />
+            <circle cx="359" cy="368" r="7" style="animation-delay:0.07s" />
+          </g>
+        </svg>
+
+        <div id="bigNumber" aria-hidden="true"></div>
+        <div id="confetti" aria-hidden="true"></div>
+      </div>
+
+      <div class="dock">
+        <div class="steps" id="stepTracker" aria-hidden="true">
+          <span class="step" data-step="0"><svg><use href="#i-seed"/></svg></span><span class="arrow">›</span>
+          <span class="step" data-step="1"><svg><use href="#i-can"/></svg></span><span class="arrow">›</span>
+          <span class="step" data-step="2"><svg><use href="#i-sun"/></svg></span><span class="arrow">›</span>
+          <span class="step" data-step="3"><svg><use href="#i-corn"/></svg></span><span class="arrow">›</span>
+          <span class="step" data-step="4"><svg><use href="#i-count"/></svg></span>
+        </div>
+        <p id="roundLabel" aria-live="polite">Round 1 &middot; Grow 1 ear of corn</p>
+        <p id="promptText" aria-live="polite">Let&rsquo;s plant a seed!</p>
+        <button id="actionBtn" type="button" data-color="plant"></button>
+        <div id="basketBar" class="hidden">
+          <div id="basketRow"></div>
+          <button id="countBtn" class="big-dock-btn hidden" type="button">
+            <svg class="ic" aria-hidden="true"><use href="#i-count"/></svg>
+            <span>Count the Corn!</span>
+          </button>
+          <button id="againBtn" class="big-dock-btn hidden" type="button">
+            <svg class="ic" aria-hidden="true"><use href="#i-seed"/></svg>
+            <span>Grow Again!</span>
+          </button>
+        </div>
+        <div id="previewBar" class="hidden">
+          <button id="previewClose" class="preview-btn" type="button"><span>&#10005; Close</span></button>
+          <span id="previewText">Round 1 of 20</span>
+          <button id="previewNext" class="preview-btn" type="button"><span>Next Round &rarr;</span></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW TO PLAY -->
+    <div id="howOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="howTitle">
+      <div class="sheet">
+        <h2 id="howTitle">How to Play</h2>
+        <p class="for" id="howFor">For grown-ups to read aloud</p>
+        <div class="how-step">
+          <span class="hic"><svg aria-hidden="true"><use href="#i-seed"/></svg></span>
+          <p id="howStep1"><b>Plant the seed.</b> Tap the big button and watch the seed drop into the soil.</p>
+        </div>
+        <div class="how-step">
+          <span class="hic"><svg aria-hidden="true"><use href="#i-can"/></svg></span>
+          <p id="howStep2"><b>Water it.</b> Tap the watering can. Splash! A little sprout pops up.</p>
+        </div>
+        <div class="how-step">
+          <span class="hic"><svg aria-hidden="true"><use href="#i-sun"/></svg></span>
+          <p id="howStep3"><b>Sunshine time.</b> Tap the sun and the plant grows taller. Water and sun a little more, and golden corn appears!</p>
+        </div>
+        <div class="how-step">
+          <span class="hic"><svg aria-hidden="true"><use href="#i-corn"/></svg></span>
+          <p id="howStep4"><b>Pick the corn.</b> Tap each ear of corn and it jumps into the basket.</p>
+        </div>
+        <div class="how-step">
+          <span class="hic"><svg aria-hidden="true"><use href="#i-count"/></svg></span>
+          <p id="howStep5"><b>Count together.</b> Tap &ldquo;Count the Corn!&rdquo; and a reminder pops up — make sure to count the ears of corn out loud. Tap its big button, then tap each ear in the basket and count out loud: one, two, three!</p>
+        </div>
+        <p class="note" id="howNote">There are no timers and no way to lose — just grow at your own pace. The first round grows <b>1 ear of corn</b>. Every time you tap <b>Grow Again!</b> the next round grows one more ear — 2, then 3, then 4, all the way up to <b>20 ears</b>. The corn grows on stalks — never more than <b>5 ears on one stalk</b>. Every 5 ears adds another stalk, so the biggest rounds grow on <b>4 stalks</b>. The basket holds the picked ears in rows of at most 10. Finish <b>Round 20</b> and a big flashing celebration fills the screen — you finished the whole game! Tap <b>Back to Home Screen</b> on it to return home, where you can start over or enter a round. When the game opens, the <b>Learn to Count</b> title picture appears first — tap its big <b>Enter Game</b> button to go to the home screen, then tap <b>Start at the Beginning</b> for Round 1, or type any round from 1 to 20 to start there. When counting starts, a reminder pops up: make sure to count the ears of corn out loud together!</p>
+        <button id="howClose" type="button">Got it!</button>
+      </div>
+    </div>
+
+    <!-- COUNT-ALOUD POPUP: shown when the Count the Corn step begins, on the same screen -->
+    <div id="countPopup" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="countPopupMsg">
+      <div class="sheet count-popup-sheet">
+        <span class="hic-big"><svg aria-hidden="true"><use href="#i-count"/></svg></span>
+        <p class="count-popup-msg" id="countPopupMsg">Make sure to count the ears of corn out loud&hellip;</p>
+        <p class="count-popup-sub" id="countPopupSub">Tap each ear in the basket and say its number together — one, two, three!</p>
+        <button id="countPopupBtn" type="button">
+          <svg class="ic" aria-hidden="true"><use href="#i-corn"/></svg>
+          <span>Let&rsquo;s Count!</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- GAME COMPLETE: shown only at the end of Round 20 -->
+    <div id="finaleOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="finaleTitle">
+      <div class="sheet finale-sheet">
+        <span class="hic-big"><svg aria-hidden="true"><use href="#i-corn"/></svg></span>
+        <h2 id="finaleTitle" class="finale-title">You finished the whole game!</h2>
+        <p class="count-popup-msg" id="finaleMsg">You grew all the way to Round 20 &mdash; twenty ears of corn!</p>
+        <p class="count-popup-sub" id="finaleSub">What a great corn counter you are!</p>
+        <button id="finaleBtn" class="sheet-btn" type="button">Back to Home Screen</button>
+      </div>
+    </div>
+
+    <!-- TITLE SCREEN: the "Learn to Count" picture in its own block, with a
+         real Enter Game button below it (never covering the picture).
+         Enter Game goes to the Home Screen below. -->
+    <div id="titleOverlay" class="overlay" role="dialog" aria-modal="true" aria-label="Learn to Count title screen">
+      <div class="title-card">
+        <div class="title-art-wrap">
+          <img class="title-art-full" src="assets/title-screen.webp" alt="Learn to Count — a sunny farm scene with two corn stalks full of ears, a red barn, and a smiling sun" />
+          <button id="barnHotspot" type="button" aria-label="Red barn"></button>
+        </div>
+        <button id="enterGameBtn" type="button">
+          <svg class="ic" aria-hidden="true"><use href="#i-corn"/></svg>
+          <span>Enter Game</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- HOME SCREEN / START CHOICE: shown after Enter Game — begin at Round 1 or type a round -->
+    <div id="startOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="startTitle">
+      <div class="sheet count-popup-sheet start-sheet">
+        <span class="hic-big"><svg aria-hidden="true"><use href="#i-corn"/></svg></span>
+        <h2 id="startTitle">Let&rsquo;s Count Corn</h2>
+        <p class="count-popup-sub" id="startSub">Start at the beginning, or type the round you want to start at.</p>
+        <button id="startBeginBtn" class="sheet-btn" type="button">Start at the Beginning</button>
+        <p class="for" id="startOr" style="margin: 6px 0 0;">or type a round number from 1 to 20:</p>
+        <input id="startInput" class="cheat-input" type="number" inputmode="numeric" min="1" max="20" step="1" placeholder="1&ndash;20" aria-label="Round number to start at" />
+        <p class="cheat-msg" id="startMsg" aria-live="polite"></p>
+        <button id="startGoBtn" class="sheet-btn" type="button">Start at That Round!</button>
+      </div>
+    </div>
+
+    <!-- GO TO A ROUND: opened by the hidden sun-tap cheat -->
+    <div id="cheatOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="cheatTitle">
+      <div class="sheet">
+        <h2 id="cheatTitle">Go to a Round</h2>
+        <p class="for" id="cheatFor">Type a round number from 1 to 20, then tap Go!</p>
+        <input id="cheatInput" class="cheat-input" type="number" inputmode="numeric" min="1" max="20" step="1" placeholder="1&ndash;20" aria-label="Round number" />
+        <p class="cheat-msg" id="cheatMsg" aria-live="polite"></p>
+        <div class="sheet-btn-row">
+          <button id="cheatCancel" class="sheet-btn secondary" type="button">Cancel</button>
+          <button id="cheatGo" class="sheet-btn" type="button">Go!</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DEBUG LOG -->
+    <div id="debugOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="debugTitle">
+      <div class="sheet">
+        <h2 id="debugTitle">Debug Log</h2>
+        <p class="for" id="debugFor">What the game has been doing this visit</p>
+        <div id="debugBox" class="debug-box">No events yet.</div>
+        <button id="debugClose" class="sheet-btn" type="button">Close</button>
+      </div>
+    </div>
+
+    <!-- Recorded voice clips -->
+    <audio data-voice="plant" src="assets/voice-plant.mp3" preload="metadata"></audio>
+    <audio data-voice="water" src="assets/voice-water.mp3" preload="metadata"></audio>
+    <audio data-voice="sun" src="assets/voice-sun.mp3" preload="metadata"></audio>
+    <audio data-voice="harvest" src="assets/voice-harvest.mp3" preload="metadata"></audio>
+    <audio data-voice="count" src="assets/voice-count.mp3" preload="metadata"></audio>
+    <audio data-voice="n1" src="assets/voice-count-1.mp3" preload="metadata"></audio>
+    <audio data-voice="n2" src="assets/voice-count-2.mp3" preload="metadata"></audio>
+    <audio data-voice="n3" src="assets/voice-count-3.mp3" preload="metadata"></audio>
+    <audio data-voice="n4" src="assets/voice-count-4.mp3" preload="metadata"></audio>
+    <audio data-voice="n5" src="assets/voice-count-5.mp3" preload="metadata"></audio>
+    <audio data-voice="n6" src="assets/voice-count-6.mp3" preload="metadata"></audio>
+    <audio data-voice="n7" src="assets/voice-count-7.mp3" preload="metadata"></audio>
+    <audio data-voice="n8" src="assets/voice-count-8.mp3" preload="metadata"></audio>
+    <audio data-voice="n9" src="assets/voice-count-9.mp3" preload="metadata"></audio>
+    <audio data-voice="n10" src="assets/voice-count-10.mp3" preload="metadata"></audio>
+    <audio data-voice="n11" src="assets/voice-count-11.mp3" preload="metadata"></audio>
+    <audio data-voice="n12" src="assets/voice-count-12.mp3" preload="metadata"></audio>
+    <audio data-voice="n13" src="assets/voice-count-13.mp3" preload="metadata"></audio>
+    <audio data-voice="n14" src="assets/voice-count-14.mp3" preload="metadata"></audio>
+    <audio data-voice="n15" src="assets/voice-count-15.mp3" preload="metadata"></audio>
+    <audio data-voice="n16" src="assets/voice-count-16.mp3" preload="metadata"></audio>
+    <audio data-voice="n17" src="assets/voice-count-17.mp3" preload="metadata"></audio>
+    <audio data-voice="n18" src="assets/voice-count-18.mp3" preload="metadata"></audio>
+    <audio data-voice="n19" src="assets/voice-count-19.mp3" preload="metadata"></audio>
+    <audio data-voice="n20" src="assets/voice-count-20.mp3" preload="metadata"></audio>
+    <audio data-voice="yay1" src="assets/voice-yay-1.mp3" preload="metadata"></audio>
+    <audio data-voice="yay2" src="assets/voice-yay-2.mp3" preload="metadata"></audio>
+    <audio data-voice="yay3" src="assets/voice-yay-3.mp3" preload="metadata"></audio>
+    <audio data-voice="yay4" src="assets/voice-yay-4.mp3" preload="metadata"></audio>
+    <audio data-voice="yay5" src="assets/voice-yay-5.mp3" preload="metadata"></audio>
+    <audio data-voice="yay6" src="assets/voice-yay-6.mp3" preload="metadata"></audio>
+    <audio data-voice="yay7" src="assets/voice-yay-7.mp3" preload="metadata"></audio>
+    <audio data-voice="yay8" src="assets/voice-yay-8.mp3" preload="metadata"></audio>
+    <audio data-voice="yay9" src="assets/voice-yay-9.mp3" preload="metadata"></audio>
+    <audio data-voice="yay10" src="assets/voice-yay-10.mp3" preload="metadata"></audio>
+    <audio data-voice="yay11" src="assets/voice-yay-11.mp3" preload="metadata"></audio>
+    <audio data-voice="yay12" src="assets/voice-yay-12.mp3" preload="metadata"></audio>
+    <audio data-voice="yay13" src="assets/voice-yay-13.mp3" preload="metadata"></audio>
+    <audio data-voice="yay14" src="assets/voice-yay-14.mp3" preload="metadata"></audio>
+    <audio data-voice="yay15" src="assets/voice-yay-15.mp3" preload="metadata"></audio>
+    <audio data-voice="yay16" src="assets/voice-yay-16.mp3" preload="metadata"></audio>
+    <audio data-voice="yay17" src="assets/voice-yay-17.mp3" preload="metadata"></audio>
+    <audio data-voice="yay18" src="assets/voice-yay-18.mp3" preload="metadata"></audio>
+    <audio data-voice="yay19" src="assets/voice-yay-19.mp3" preload="metadata"></audio>
+    <audio data-voice="yay20" src="assets/voice-yay-20.mp3" preload="metadata"></audio>
+
+    <script>
+      "use strict";
+      var $ = function (id) { return document.getElementById(id); };
+
+      /* ================= State ================= */
+      var stage = "plant"; // plant, water1, sun1, water2, sun2, harvest, count, done
+      var busy = false;
+      var roundNumber = 1;
+      var earCount = 1;
+      var picked = 0;
+      var counted = 0;
+      var soundOn = true;
+
+      var actionBtn = $("actionBtn"), promptText = $("promptText");
+      var basketBar = $("basketBar"), basketRow = $("basketRow");
+      var countBtn = $("countBtn"), againBtn = $("againBtn");
+      var seedG = $("seedG"), sproutG = $("sproutG"), plantG = $("plantG");
+      var skySun = $("skySun"), waterCan = $("waterCan"), drops = $("drops"), sunFx = $("sunFx");
+      var sceneWrap = $("sceneWrap"), bigNumber = $("bigNumber"), confettiBox = $("confetti");
+      var roundLabel = $("roundLabel");
+      var plantWrap = $("plantWrap");
+      var finaleOverlay = $("finaleOverlay"), finaleBtn = $("finaleBtn");
+      var countPopup = $("countPopup"), countPopupBtn = $("countPopupBtn");
+      var SVGNS = "http://www.w3.org/2000/svg";
+
+      /* ================= Debug log (Menu -> Debug Log) ================= */
+      var debugLog = [];
+      function logEvent(msg) {
+        var now = new Date();
+        function pad(n) { return (n < 10 ? "0" : "") + n; }
+        debugLog.push(pad(now.getHours()) + ":" + pad(now.getMinutes()) + ":" + pad(now.getSeconds()) + "  " + msg);
+        if (debugLog.length > 300) debugLog.shift();
+        var overlay = $("debugOverlay");
+        if (overlay && !overlay.classList.contains("hidden")) renderDebugLog();
+      }
+      function renderDebugLog() {
+        var box = $("debugBox");
+        if (!box) return;
+        box.textContent = debugLog.length ? debugLog.join("\n") : STR.debugEmpty;
+        box.scrollTop = box.scrollHeight;
+      }
+      window.addEventListener("error", function (ev) { logEvent("Error: " + (ev.message || "unknown error")); });
+      function updateRoundLabel() {
+        if (!roundLabel) return;
+        roundLabel.textContent = "Round " + roundNumber + " \u00B7 Grow " + earCount + (earCount === 1 ? " ear" : " ears") + " of corn";
+      }
+
+      /* ================= Voice clips ================= */
+      var voiceEls = {};
+      var audioTags = document.querySelectorAll("audio[data-voice]");
+      for (var vi = 0; vi < audioTags.length; vi++) voiceEls[audioTags[vi].getAttribute("data-voice")] = audioTags[vi];
+      var currentVoice = null;
+      var queuedVoice = null;
+      function stopVoice() {
+        queuedVoice = null;
+        if (currentVoice) { try { currentVoice.pause(); currentVoice.currentTime = 0; } catch (e) {} currentVoice = null; }
+      }
+      /* What each voice clip says, so the Debug Log can show her words.
+         All counting clips (n1-n20) and recap clips (yay1-yay20) are the
+         same woman's voice; every recap names its own round's count. */
+      var NUMBER_WORDS = ["One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
+        "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen", "Twenty"];
+      function recapLine(n) {
+        return "You did it! You grew " + NUMBER_WORDS[n - 1].toLowerCase() + (n === 1 ? " ear" : " ears") + " of corn!";
+      }
+      function voiceLine(name) {
+        if (/^n\d+$/.test(name)) {
+          var cn = parseInt(name.slice(1), 10);
+          if (cn >= 1 && cn <= 20) return NUMBER_WORDS[cn - 1];
+        }
+        if (/^yay\d+$/.test(name)) {
+          var yn = parseInt(name.slice(3), 10);
+          if (yn >= 1 && yn <= 20) return recapLine(yn);
+        }
+        return null;
+      }
+      function playVoice(name, queue) {
+        if (!soundOn) return;
+        var key = name;
+        var a = voiceEls[key];
+        if (!a) { logEvent("Voice clip missing: " + key + " (nothing spoken)"); return; }
+        /* Prompt lines (queue = true) never chop off a line she is still
+           speaking: the new line waits, then plays in full as soon as the
+           current one ends. Counting taps pass no queue flag, so each tap
+           still speaks its own number right away. */
+        if (queue && currentVoice && currentVoice !== a && !currentVoice.paused && !currentVoice.ended) {
+          queuedVoice = name;
+          logEvent("Voice queued (she is still speaking): " + key);
+          return;
+        }
+        stopVoice();
+        currentVoice = a;
+        try { a.currentTime = 0; } catch (e) {}
+        var line = voiceLine(name);
+        logEvent(line ? 'She says: "' + line + '"' : "Voice clip played: " + key);
+        a.onended = function () {
+          if (currentVoice === a) currentVoice = null;
+          if (queuedVoice) { var nextLine = queuedVoice; queuedVoice = null; playVoice(nextLine); }
+        };
+        var p = a.play();
+        if (p && p.catch) p.catch(function (err) {
+          /* Never swallow a failed play() silently: the log above already
+             claimed she spoke, so record the real outcome here. If a newer
+             line has taken over, this rejection is just the old line being
+             interrupted — ignore it. Otherwise reload the clip and try
+             once more (covers clips the browser had not loaded yet). */
+          if (currentVoice !== a) return;
+          logEvent("Voice play blocked: " + key + " (" + (err && err.name ? err.name : "error") + ") — reloading and retrying");
+          try { a.load(); } catch (e) {}
+          var p2 = a.play();
+          if (p2 && p2.catch) p2.catch(function (err2) {
+            if (currentVoice === a) logEvent("Voice clip could not play: " + key + " (" + (err2 && err2.name ? err2.name : "error") + ")");
+          });
+        });
+      }
+
+      /* ================= Voice clip priming (iOS unlock) =================
+         iOS only lets an <audio> element start playback outside a tap
+         handler if that same element was already played during a tap —
+         and it ignores preload, so an unplayed clip may not even be
+         loaded yet. Most of her lines are triggered from animation
+         timers, not from the tap itself, so an unprimed clip is refused
+         by iOS and stays silent even though play() was called. Priming
+         plays each clip for real (at zero volume) inside a tap, then
+         pauses and rewinds it: after that, the element is unlocked and
+         loaded, and timer-triggered plays are heard.
+         The clips are primed STRICTLY ONE AT A TIME from a queue:
+         firing every clip in the same instant piles dozens of
+         simultaneous decoders onto the iPhone media pipeline, which
+         can garble her voice or crash the page. With the queue, at
+         most one muted clip is ever decoding: each element is paused
+         and rewound before the next one starts. All clips are primed
+         on the first tap, before any line is due. */
+      var primedVoice = {};
+      var primeQueue = [];
+      var primeActive = false;
+      function primeVoice() {
+        for (var k in voiceEls) {
+          if (primedVoice[k]) continue;
+          primedVoice[k] = true;
+          primeQueue.push(voiceEls[k]);
+        }
+        logEvent("Voice clips primed (tap unlock)");
+        primeStep();
+      }
+      function primeStep() {
+        if (primeActive) return;
+        var a = primeQueue.shift();
+        if (!a) return;
+        if (a === currentVoice || !a.paused) { primeStep(); return; } // already unlocked by a real line
+        primeActive = true;
+        var settled = false;
+        var finish = function () {
+          if (settled) return;
+          settled = true;
+          clearTimeout(guard);
+          if (a.onended === finish) a.onended = null;
+          a.volume = 1;
+          if (currentVoice !== a) {
+            try { a.pause(); a.currentTime = 0; } catch (e) {}
+          }
+          primeActive = false;
+          primeStep();
+        };
+        var guard = setTimeout(finish, 1500);
+        try {
+          a.volume = 0;
+          a.onended = finish;
+          try { a.load(); } catch (e) {}
+          var pr = a.play();
+          if (pr && pr.then) pr.then(function () { setTimeout(finish, 40); }).catch(finish);
+          else setTimeout(finish, 40);
+        } catch (e) { finish(); }
+      }
+
+      /* ================= WebAudio: music + effects ================= */
+      var actx = null, master = null, musicBus = null, noiseBuf = null;
+      var musicPlaying = false, musicWasPlaying = false, musicStarted = false, musicTimer = null;
+      function ensureAudio() {
+        if (actx) { if (actx.state !== "running") { try { actx.resume(); } catch (e) {} } return; }
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) { logEvent("Audio: not available in this browser"); return; }
+        actx = new AC();
+        master = actx.createGain(); master.gain.value = 0.9; master.connect(actx.destination);
+        musicBus = actx.createGain(); musicBus.gain.value = 0.65; musicBus.connect(master);
+        if (actx.state !== "running") { try { actx.resume(); } catch (e) {} }
+        if (actx.addEventListener) actx.addEventListener("statechange", function () { logEvent("Audio state: " + actx.state); });
+        logEvent("Audio ready (state: " + actx.state + ")");
+      }
+      function freq(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
+      function tone(f0, f1, dur, type, vol, delay) {
+        if (!actx || !soundOn) return;
+        var t = actx.currentTime + (delay || 0);
+        var o = actx.createOscillator(), g = actx.createGain();
+        o.type = type;
+        o.frequency.setValueAtTime(f0, t);
+        if (f1 && f1 !== f0) o.frequency.exponentialRampToValueAtTime(Math.max(f1, 1), t + dur);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(vol, t + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(g); g.connect(master);
+        o.start(t); o.stop(t + dur + 0.05);
+      }
+      function popSfx() { tone(520, 170, 0.14, "sine", 0.35, 0); }
+      function seedSfx() { tone(320, 90, 0.16, "triangle", 0.32, 0); tone(760, 520, 0.09, "sine", 0.18, 0.12); }
+      function chimeSfx() { var n = [523, 659, 784]; for (var i = 0; i < n.length; i++) tone(n[i], n[i], 0.5, "triangle", 0.2, i * 0.09); }
+      function sparkleSfx() { var n = [1047, 1319, 1568, 2093]; for (var i = 0; i < n.length; i++) tone(n[i], n[i], 0.4, "sine", 0.15, i * 0.07); }
+      function harvestSfx() { tone(420, 940, 0.13, "sine", 0.3, 0); tone(1250, 1250, 0.12, "triangle", 0.16, 0.08); }
+      function countSfx(n) { var scale = [523,587,659,784,880,988,1047,1175,1319,1397,1568,1760,1976,2093,2349,2637,2794,3136,3520,3951]; var f = scale[Math.min(Math.max(n,1), 20) - 1]; tone(f, f, 0.35, "triangle", 0.25, 0); tone(f * 2, f * 2, 0.3, "sine", 0.1, 0.02); }
+      function fanfareSfx() {
+        var n = [523, 659, 784, 1047];
+        for (var i = 0; i < n.length; i++) tone(n[i], n[i], 0.6, "triangle", 0.26, i * 0.12);
+        tone(1319, 1319, 0.9, "sine", 0.16, 0.5); tone(659, 659, 0.9, "triangle", 0.14, 0.5);
+      }
+      function splashSfx() {
+        if (!actx || !soundOn) return;
+        if (!noiseBuf) {
+          noiseBuf = actx.createBuffer(1, actx.sampleRate, actx.sampleRate);
+          var d = noiseBuf.getChannelData(0);
+          for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        }
+        for (var k = 0; k < 9; k++) {
+          var t = actx.currentTime + k * 0.09 + Math.random() * 0.03;
+          var src = actx.createBufferSource(); src.buffer = noiseBuf;
+          var bp = actx.createBiquadFilter(); bp.type = "bandpass";
+          bp.frequency.value = 900 + Math.random() * 1400; bp.Q.value = 1.1;
+          var g = actx.createGain();
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.exponentialRampToValueAtTime(0.2, t + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+          src.connect(bp); bp.connect(g); g.connect(master);
+          src.start(t); src.stop(t + 0.22);
+        }
+      }
+
+      /* Gentle music-box loop (original lullaby in C major) */
+      var BEAT = 0.52, LOOP_BEATS = 32;
+      var MELODY = [
+        [72,1],[76,1],[79,1],[76,1],
+        [81,1],[79,1],[76,1],[72,1],
+        [74,1],[76,1],[77,1],[76,1],
+        [74,1],[71,1],[72,2],
+        [72,1],[76,1],[79,1],[76,1],
+        [81,1],[79,1],[76,1],[72,1],
+        [74,1],[77,1],[76,1],[74,1],
+        [72,4]
+      ];
+      var BASS = [48, 53, 55, 48, 48, 53, 55, 48];
+      var EVENTS = (function () {
+        var evs = [], t = 0, i;
+        for (i = 0; i < MELODY.length; i++) { evs.push({ t: t, m: MELODY[i][0], d: MELODY[i][1], kind: "mel" }); t += MELODY[i][1]; }
+        for (i = 0; i < BASS.length; i++) {
+          evs.push({ t: i * 4, m: BASS[i], d: 2, kind: "bass" });
+          evs.push({ t: i * 4 + 2, m: BASS[i] + 7, d: 2, kind: "bass" });
+        }
+        evs.sort(function (a, b) { return a.t - b.t; });
+        return evs;
+      })();
+      var evPtr = 0, loopStart = 0;
+      function playNote(ev, when) {
+        var f = freq(ev.m);
+        var g = actx.createGain();
+        var peak = ev.kind === "mel" ? 0.26 : 0.13;
+        var dec = ev.kind === "mel" ? Math.min(ev.d * BEAT * 1.9, 1.7) : ev.d * BEAT * 0.95;
+        g.gain.setValueAtTime(0.0001, when);
+        g.gain.linearRampToValueAtTime(peak, when + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.0001, when + dec);
+        var o = actx.createOscillator(); o.type = "sine"; o.frequency.value = f;
+        o.connect(g);
+        if (ev.kind === "mel") {
+          var o2 = actx.createOscillator(); o2.type = "sine"; o2.frequency.value = f * 2;
+          var g2 = actx.createGain(); g2.gain.value = 0.25;
+          o2.connect(g2); g2.connect(g);
+          o2.start(when); o2.stop(when + dec + 0.05);
+        }
+        g.connect(musicBus);
+        o.start(when); o.stop(when + dec + 0.05);
+      }
+      function schedulerTick() {
+        if (!musicPlaying || !actx) return;
+        if (actx.state !== "running") { try { actx.resume(); } catch (e) {} return; }
+        var ahead = actx.currentTime + 0.35;
+        var guard = 0;
+        while (guard++ < 64) {
+          var ev = EVENTS[evPtr];
+          var when = loopStart + ev.t * BEAT;
+          if (when > ahead) break;
+          playNote(ev, Math.max(when, actx.currentTime));
+          evPtr++;
+          if (evPtr >= EVENTS.length) { evPtr = 0; loopStart += LOOP_BEATS * BEAT; }
+        }
+      }
+      function startMusic() {
+        if (!soundOn || !actx || musicPlaying) return;
+        musicPlaying = true;
+        logEvent("Music started");
+        evPtr = 0; loopStart = actx.currentTime + 0.06;
+        schedulerTick();
+        musicTimer = setInterval(schedulerTick, 120);
+      }
+      function stopMusic() {
+        if (musicPlaying) logEvent("Music stopped");
+        musicPlaying = false;
+        if (musicTimer) { clearInterval(musicTimer); musicTimer = null; }
+      }
+      document.addEventListener("visibilitychange", function () {
+        if (document.hidden) {
+          if (musicPlaying) { musicWasPlaying = true; stopMusic(); }
+          stopVoice();
+        } else if (soundOn && musicWasPlaying) {
+          musicWasPlaying = false;
+          startMusic();
+        }
+      });
+
+      /* ================= Sound toggle ================= */
+      function updateSoundButtons() {
+        var btns = document.querySelectorAll(".sound-btn");
+        for (var i = 0; i < btns.length; i++) {
+          var label = "Sound: " + (soundOn ? "On" : "Off");
+          btns[i].innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-sound-' + (soundOn ? "on" : "off") + '"/></svg><span>' + label + "</span>";
+          btns[i].setAttribute("aria-label", (soundOn ? "Turn sound off" : "Turn sound on"));
+        }
+      }
+      function setSound(on) {
+        soundOn = on;
+        logEvent("Sound turned " + (on ? "on" : "off"));
+        updateSoundButtons();
+        if (!on) { stopMusic(); musicWasPlaying = false; stopVoice(); }
+        else { ensureAudio(); if (musicStarted && !musicPlaying) startMusic(); }
+      }
+      var soundBtns = document.querySelectorAll(".sound-btn");
+      for (var sb = 0; sb < soundBtns.length; sb++) {
+        soundBtns[sb].addEventListener("click", function () { ensureAudio(); setSound(!soundOn); if (soundOn) popSfx(); });
+      }
+
+      /* ================= Stage flow ================= */
+      var STAGE_INFO = {
+        plant:  { step: 0, prompt: "Let\u2019s plant a seed!",        label: "Plant the Seed!", icon: "#i-seed", color: "plant",   voice: "plant" },
+        water1: { step: 1, prompt: "The seed is thirsty!",            label: "Water It!",       icon: "#i-can",  color: "water",   voice: "water" },
+        sun1:   { step: 2, prompt: "Plants love sunshine!",          label: "Sunshine!",       icon: "#i-sun",  color: "sun",     voice: "sun" },
+        water2: { step: 1, prompt: "A little more water!",           label: "Water It!",       icon: "#i-can",  color: "water",   voice: "water" },
+        sun2:   { step: 2, prompt: "More sunshine to grow tall!",    label: "Sunshine!",       icon: "#i-sun",  color: "sun",     voice: "sun" },
+        harvest:{ step: 3, prompt: "The corn is ready! Tap each ear to pick it!", label: "", icon: "", color: "harvest", voice: "harvest" },
+        count:  { step: 4, prompt: "Let\u2019s count the corn! Tap each one!",   label: "", icon: "", color: "harvest", voice: "count" },
+        done:   { step: 4, prompt: "You did it! Look at all that corn!",          label: "", icon: "", color: "harvest", voice: "" }
+      };
+      function stageInfo() { return STAGE_INFO; }
+
+      /* ================= All on-screen text ================= */
+      var STR = {
+          gameTitle: "Let\u2019s Count Corn",
+          menu: "Menu",
+          howToPlay: "How to Play",
+          debugLog: "Debug Log",
+          countCorn: "Count the Corn!",
+          growAgain: "Grow Again!",
+          previewClose: "\u2715 Close",
+          backToTitle: "Back to Title",
+          nextRound: "Next Round",
+          howTitle: "How to Play",
+          howFor: "For grown-ups to read aloud",
+          howSteps: [
+            "<b>Plant the seed.</b> Tap the big button and watch the seed drop into the soil.",
+            "<b>Water it.</b> Tap the watering can. Splash! A little sprout pops up.",
+            "<b>Sunshine time.</b> Tap the sun and the plant grows taller. Water and sun a little more, and golden corn appears!",
+            "<b>Pick the corn.</b> Tap each ear of corn and it jumps into the basket.",
+            "<b>Count together.</b> Tap \u201CCount the Corn!\u201D and a reminder pops up \u2014 make sure to count the ears of corn out loud. Tap its big button, then tap each ear in the basket and count out loud: one, two, three!"
+          ],
+          howNote: "There are no timers and no way to lose \u2014 just grow at your own pace. The first round grows <b>1 ear of corn</b>. Every time you tap <b>Grow Again!</b> the next round grows one more ear \u2014 2, then 3, then 4, all the way up to <b>20 ears</b>. The corn grows on stalks \u2014 never more than <b>5 ears on one stalk</b>. Every 5 ears adds another stalk, so the biggest rounds grow on <b>4 stalks</b>. The basket holds the picked ears in rows of at most 10. Finish <b>Round 20</b> and a big flashing celebration fills the screen \u2014 you finished the whole game! Tap <b>Back to Home Screen</b> on it to return home, where you can start over or enter a round. When the game opens, the <b>Learn to Count</b> title picture appears first \u2014 tap its big <b>Enter Game</b> button to go to the home screen, then tap <b>Start at the Beginning</b> for Round 1, or type any round from 1 to 20 to start there. When counting starts, a reminder pops up: make sure to count the ears of corn out loud together!",
+          howClose: "Got it!",
+          countMsg: "Make sure to count the ears of corn out loud\u2026",
+          countSub: "Tap each ear in the basket and say its number together \u2014 one, two, three!",
+          countBtn: "Let\u2019s Count!",
+          finaleTitle: "You finished the whole game!",
+          finaleMsg: "You grew all the way to Round 20 \u2014 twenty ears of corn!",
+          finaleSub: "What a great corn counter you are!",
+          finaleBtn: "Back to Home Screen",
+          enterGame: "Enter Game",
+          startSub: "Start at the beginning, or type the round you want to start at.",
+          startBegin: "Start at the Beginning",
+          startOr: "or type a round number from 1 to 20:",
+          startGo: "Start at That Round!",
+          cheatTitle: "Go to a Round",
+          cheatFor: "Type a round number from 1 to 20, then tap Go!",
+          cheatCancel: "Cancel",
+          cheatGo: "Go!",
+          debugTitle: "Debug Log",
+          debugFor: "What the game has been doing this visit",
+          debugClose: "Close",
+          debugEmpty: "No events yet.",
+          invalidRound: "Please type a number from 1 to 20.",
+          roundInputLabel: "Round number",
+          sunLabel: "Sun",
+          basketSpot: "Basket spot",
+          pickEar: "Pick this ear of corn",
+          countEar: "Count this ear of corn",
+          sceneLabel: "A farm field with soil, a barn, and a sunny sky"
+      };
+      function setSteps(activeIdx, allDone) {
+        var steps = document.querySelectorAll("#stepTracker .step");
+        for (var i = 0; i < steps.length; i++) {
+          steps[i].classList.toggle("now", !allDone && i === activeIdx);
+          steps[i].classList.toggle("done", allDone || i < activeIdx);
+        }
+      }
+      function setStage(next, silent) {
+        stage = next;
+        logEvent("Stage: " + next + " (Round " + roundNumber + ")");
+        var info = stageInfo()[next];
+        promptText.textContent = info.prompt;
+        setSteps(info.step, next === "done");
+        var actionStages = ["plant", "water1", "sun1", "water2", "sun2"];
+        if (actionStages.indexOf(next) >= 0) {
+          actionBtn.classList.remove("hidden");
+          basketBar.classList.add("hidden");
+          actionBtn.setAttribute("data-color", info.color);
+          actionBtn.innerHTML = '<svg class="ic" aria-hidden="true"><use href="' + info.icon + '"/></svg><span>' + info.label + "</span>";
+        } else {
+          actionBtn.classList.add("hidden");
+          basketBar.classList.remove("hidden");
+        }
+        if (!silent && info.voice) playVoice(info.voice, true);
+      }
+      function setPlantScale(s) { plantG.style.setProperty("--pScale", s); }
+      function showEl(el) { el.classList.remove("off"); }
+      function hideEl(el) { el.classList.add("off"); }
+      function popInEl(el) {
+        el.classList.remove("pop-in");
+        void el.getBBox;
+        el.classList.add("pop-in");
+      }
+
+      function doPlant() {
+        if (busy || stage !== "plant") return;
+        busy = true; actionBtn.classList.add("busy");
+        ensureAudio();
+        showEl(seedG);
+        seedSfx();
+        if (seedG.animate) {
+          seedG.animate(
+            [{ transform: "translateY(-130px)" }, { transform: "translateY(0px)", offset: 0.55 }, { transform: "translateY(-16px)", offset: 0.75 }, { transform: "translateY(0px)" }],
+            { duration: 650, easing: "ease-out" }
+          );
+        }
+        setTimeout(function () {
+          busy = false; actionBtn.classList.remove("busy");
+          setStage("water1");
+        }, 750);
+      }
+      function doWater() {
+        if (busy || (stage !== "water1" && stage !== "water2")) return;
+        busy = true; actionBtn.classList.add("busy");
+        ensureAudio();
+        var wasFirst = stage === "water1";
+        showEl(waterCan);
+        drops.classList.add("go");
+        splashSfx();
+        setTimeout(function () {
+          hideEl(waterCan);
+          drops.classList.remove("go");
+          if (wasFirst) {
+            hideEl(seedG);
+            showEl(sproutG);
+            popInEl(sproutG);
+            chimeSfx();
+            busy = false; actionBtn.classList.remove("busy");
+            setStage("sun1");
+          } else {
+            setPlantScale(0.8);
+            chimeSfx();
+            busy = false; actionBtn.classList.remove("busy");
+            setStage("sun2");
+          }
+        }, 1500);
+      }
+      function doSun() {
+        if (busy || (stage !== "sun1" && stage !== "sun2")) return;
+        busy = true; actionBtn.classList.add("busy");
+        ensureAudio();
+        var wasFirst = stage === "sun1";
+        skySun.classList.add("beaming");
+        showEl(sunFx);
+        sparkleSfx();
+        setTimeout(function () {
+          skySun.classList.remove("beaming");
+          hideEl(sunFx);
+          if (wasFirst) {
+            hideEl(sproutG);
+            setPlantScale(0.5);
+            showEl(plantG);
+            var swayEls = plantG.querySelectorAll(".sway");
+            for (var sw = 0; sw < swayEls.length; sw++) popInEl(swayEls[sw]);
+            setTimeout(function () {
+              var els = plantG.querySelectorAll(".sway");
+              for (var sw2 = 0; sw2 < els.length; sw2++) els[sw2].classList.remove("pop-in");
+            }, 750);
+            chimeSfx();
+            busy = false; actionBtn.classList.remove("busy");
+            setStage("water2");
+          } else {
+            setPlantScale(1.02);
+            earCount = Math.min(roundNumber, 20);
+            updateRoundLabel();
+            buildEars();
+            setTimeout(function () {
+              var ears = plantWrap.querySelectorAll(".earG");
+              for (var i = 0; i < ears.length; i++) {
+                showEl(ears[i]);
+                var inner = ears[i].querySelector(".earIn");
+                inner.classList.remove("pop-in");
+                void inner.getBBox;
+                inner.classList.add("pop-in");
+              }
+              chimeSfx();
+              setTimeout(function () { sparkleSfx(); }, 250);
+            }, 500);
+            busy = false; actionBtn.classList.remove("busy");
+            setStage("harvest");
+            buildBasket();
+            armEars();
+          }
+        }, 1600);
+      }
+      /* Corn grows on stalks: one stalk for every 5 ears this round
+         (rounds 1-5: 1 stalk, 6-10: 2, 11-15: 3, 16-20: 4), and a stalk
+         never carries more than 5 ears. */
+      function stalkCountFor(n) { return Math.max(1, Math.ceil(n / 5)); }
+      function stalkXs(count) {
+        if (count <= 1) return [400];
+        if (count === 2) return [316, 484];
+        if (count === 3) return [252, 400, 548];
+        return [196, 332, 468, 604];
+      }
+      /* One stalk, drawn around x=0; a whole multi-stalk plant is several
+         of these side by side, each in its own swaying group. */
+      var STALK_ART =
+        '<path d="M0 486 C-8 420 10 360 -2 300 C-8 268 2 240 0 214" stroke="#43a047" stroke-width="15" fill="none" stroke-linecap="round" />' +
+        '<path d="M-2 430 C-60 428 -94 404 -104 368 C-62 372 -20 396 -2 430 Z" fill="#4caf50" />' +
+        '<path d="M2 398 C60 396 94 372 104 336 C62 340 20 364 2 398 Z" fill="#43a047" />' +
+        '<path d="M-1 330 C-52 326 -82 304 -90 272 C-50 278 -14 300 -1 330 Z" fill="#4caf50" />' +
+        '<path d="M1 282 C48 276 76 256 84 228 C46 234 14 254 1 282 Z" fill="#43a047" />' +
+        '<path d="M0 238 C-34 232 -56 218 -62 196 C-32 202 -8 216 0 238 Z" fill="#4caf50" />' +
+        '<g stroke="#d9a45b" stroke-width="5" fill="none" stroke-linecap="round">' +
+        '<path d="M0 214 C-4 196 -12 186 -22 178" />' +
+        '<path d="M0 214 C0 194 6 182 14 172" />' +
+        '<path d="M0 214 C4 198 14 190 24 184" />' +
+        "</g>";
+      function buildStalks() {
+        while (plantWrap.firstChild) plantWrap.removeChild(plantWrap.firstChild);
+        var xs = stalkXs(stalkCountFor(earCount));
+        for (var s = 0; s < xs.length; s++) {
+          var sway = document.createElementNS(SVGNS, "g");
+          sway.setAttribute("class", "sway");
+          sway.style.transformOrigin = xs[s] + "px 486px";
+          sway.style.animationDelay = (s * 0.7) + "s";
+          var body = document.createElementNS(SVGNS, "g");
+          body.setAttribute("transform", "translate(" + xs[s] + ",0)");
+          body.innerHTML = STALK_ART + '<g class="earsHere"></g>';
+          sway.appendChild(body);
+          plantWrap.appendChild(sway);
+        }
+      }
+      function buildEars() {
+        // Every stalk is rebuilt fresh: its art plus this round's ears,
+        // at most 5 ears on a stalk, spread up it left and right.
+        buildStalks();
+        var total = earCount;
+        for (var idx = 0; idx < total; idx++) {
+          (function (i) {
+            var stalkIdx = Math.floor(i / 5);
+            var onStalk = Math.min(5, total - stalkIdx * 5);
+            var j = i - stalkIdx * 5;
+            var side = j % 2 === 0 ? -1 : 1;
+            var y, x;
+            if (onStalk === 1) { y = 356; x = -8; }
+            else {
+              var frac = j / (onStalk - 1);
+              y = 428 - frac * 176;
+              x = side < 0 ? -32 : 32;
+            }
+            var rot = side < 0 ? -28 : 28;
+            if (onStalk === 1) rot = -24;
+            var g = document.createElementNS(SVGNS, "g");
+            g.setAttribute("class", "earG off");
+            g.setAttribute("id", "ear" + (i + 1));
+            g.setAttribute("transform", "translate(" + x + "," + y + ") rotate(" + rot + ")");
+            g.innerHTML = '<g class="earIn"><circle class="ear-hit" r="38" fill="#ffffff" opacity="0" /><path d="M0 6 C-20 2 -26 -16 -22 -34 C-8 -24 -2 -12 0 6 Z" fill="#43a047" /><path d="M0 6 C20 2 26 -16 22 -34 C8 -24 2 -12 0 6 Z" fill="#4caf50" /><ellipse cx="0" cy="-30" rx="14" ry="25" fill="#ffc93c" stroke="#eda812" stroke-width="2.5" /><path d="M-7 -48 C-9 -30 -9 -18 -7 -12 M7 -48 C9 -30 9 -18 7 -12 M0 -53 L0 -9" stroke="rgba(160,90,0,0.35)" stroke-width="2" fill="none" /><path d="M-4 -54 C-6 -62 -10 -66 -14 -68 M4 -54 C6 -62 10 -66 14 -68" stroke="#b08954" stroke-width="2.5" fill="none" stroke-linecap="round" /></g>';
+            g.addEventListener("click", function () { pickEar(g); });
+            g.addEventListener("keydown", function (ev) { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); pickEar(g); } });
+            plantWrap.querySelectorAll(".earsHere")[stalkIdx].appendChild(g);
+          })(idx);
+        }
+      }
+      function buildBasket() {
+        basketRow.innerHTML = "";
+        basketRow.classList.remove("counting", "many", "lots");
+        if (earCount > 10) basketRow.classList.add("lots");
+        else if (earCount > 5) basketRow.classList.add("many");
+        // Picked corns sit in rows of at most 10: rounds 11-20 get a second row.
+        var rowDiv = null;
+        for (var i = 0; i < earCount; i++) {
+          if (i % 10 === 0) {
+            rowDiv = document.createElement("div");
+            rowDiv.className = "brow";
+            basketRow.appendChild(rowDiv);
+          }
+          var slot = document.createElement("button");
+          slot.type = "button";
+          slot.className = "slot";
+          slot.setAttribute("aria-label", STR.basketSpot + " " + (i + 1));
+          slot.disabled = true;
+          rowDiv.appendChild(slot);
+        }
+        countBtn.classList.add("hidden");
+        againBtn.classList.add("hidden");
+      }
+      function armEars() {
+        var ears = plantWrap.querySelectorAll(".earG");
+        for (var i = 0; i < ears.length; i++) {
+          var ear = ears[i];
+          ear.classList.add("tappable");
+          var inn = ear.querySelector(".earIn");
+          if (inn) inn.classList.add("ear-wiggle");
+          ear.setAttribute("role", "button");
+          ear.setAttribute("tabindex", "0");
+          ear.setAttribute("aria-label", STR.pickEar);
+        }
+      }
+      function disarmEar(ear) {
+        ear.classList.remove("tappable");
+        ear.removeAttribute("tabindex");
+        var inner = ear.querySelector(".earIn");
+        inner.classList.remove("ear-wiggle");
+      }
+      function pickEar(ear) {
+        if (previewMode) return;
+        if (stage !== "harvest" || ear.classList.contains("off")) return;
+        ensureAudio();
+        harvestSfx();
+        disarmEar(ear);
+        var slot = basketRow.querySelectorAll(".slot")[picked];
+        flyEar(ear, slot, function () {
+          slot.innerHTML = '<svg aria-hidden="true"><use href="#i-corn"/></svg>';
+          slot.classList.add("filled", "pop");
+        });
+        hideEl(ear);
+        picked++;
+        if (picked >= earCount) {
+          setTimeout(function () {
+            countBtn.classList.remove("hidden");
+            popSfx();
+          }, 650);
+        }
+      }
+      function flyEar(ear, slot, done) {
+        var wrapRect = sceneWrap.getBoundingClientRect();
+        var r1 = ear.getBoundingClientRect();
+        var r2 = slot.getBoundingClientRect();
+        var fly = document.createElement("div");
+        fly.className = "fly-ear";
+        var w = Math.max(r1.width, 30);
+        fly.style.width = w + "px";
+        fly.style.height = (w * 1.5) + "px";
+        fly.style.left = (r1.left + r1.width / 2 - wrapRect.left) + "px";
+        fly.style.top = (r1.top + r1.height / 2 - wrapRect.top) + "px";
+        fly.innerHTML = '<svg viewBox="0 0 64 96" aria-hidden="true"><use href="#i-corn"/></svg>';
+        sceneWrap.appendChild(fly);
+        var dx = (r2.left + r2.width / 2 - wrapRect.left) - (r1.left + r1.width / 2 - wrapRect.left);
+        var dy = (r2.top + r2.height / 2 - wrapRect.top) - (r1.top + r1.height / 2 - wrapRect.top);
+        var targetScale = Math.max(r2.width / w, 0.2);
+        if (fly.animate) {
+          var anim = fly.animate(
+            [
+              { transform: "translate(-50%,-50%) scale(1) rotate(0deg)" },
+              { transform: "translate(calc(-50% + " + dx * 0.5 + "px), calc(-50% + " + (dy - 90) + "px)) scale(1.05) rotate(10deg)", offset: 0.55 },
+              { transform: "translate(calc(-50% + " + dx + "px), calc(-50% + " + dy + "px)) scale(" + targetScale + ") rotate(0deg)" }
+            ],
+            { duration: 620, easing: "ease-in-out" }
+          );
+          anim.onfinish = function () { fly.remove(); if (done) done(); };
+        } else {
+          fly.remove();
+          if (done) done();
+        }
+      }
+      function startCounting() {
+        if (stage !== "harvest" || picked < earCount) return;
+        // Show the count-aloud reminder popup first; counting begins
+        // only when its big button is tapped.
+        ensureAudio();
+        popSfx();
+        countPopup.classList.remove("hidden");
+        try { countPopupBtn.focus(); } catch (e) {}
+      }
+      function beginCounting() {
+        countPopup.classList.add("hidden");
+        if (stage !== "harvest" || picked < earCount) return;
+        setStage("count");
+        basketRow.classList.add("counting");
+        var slots = basketRow.querySelectorAll(".slot");
+        for (var i = 0; i < slots.length; i++) {
+          slots[i].disabled = false;
+          slots[i].setAttribute("aria-label", STR.countEar);
+        }
+        countBtn.classList.add("hidden");
+      }
+      function countEar(slot) {
+        if (stage !== "count" || slot.classList.contains("counted")) return;
+        ensureAudio();
+        counted++;
+        slot.classList.add("counted");
+        slot.disabled = true;
+        var badge = document.createElement("span");
+        badge.className = "badge";
+        badge.textContent = counted;
+        slot.appendChild(badge);
+        countSfx(counted);
+        playVoice("n" + counted);
+        logEvent("Counted " + counted + " of " + earCount + " (Round " + roundNumber + ")");
+        bigNumber.textContent = counted;
+        bigNumber.classList.remove("show");
+        void bigNumber.offsetWidth;
+        bigNumber.classList.add("show");
+        setTimeout(function () { bigNumber.classList.remove("show"); }, 1050);
+        if (counted >= earCount) {
+          stage = "done-pending";
+          setTimeout(celebrate, 950);
+        }
+      }
+      function celebrate() {
+        setStage("done", true);
+        basketRow.classList.remove("counting");
+        fanfareSfx();
+        // She recaps THIS round's harvest: yayN says "You grew N ears of corn!"
+        playVoice("yay" + earCount, true);
+        logEvent("Round " + roundNumber + " complete — recap: " + earCount + (earCount === 1 ? " ear" : " ears") + " of corn grown");
+        confettiBurst();
+        againBtn.classList.remove("hidden");
+        if (roundNumber >= 20) {
+          // The whole game is done: the flashing, blinking finale takes
+          // over the screen to congratulate the player.
+          setTimeout(function () {
+            finaleOverlay.classList.remove("hidden");
+            try { finaleBtn.focus(); } catch (e) {}
+            logEvent("GAME COMPLETE — Round 20 finished, finale celebration shown");
+          }, 1400);
+        }
+      }
+      function confettiBurst() {
+        confettiBox.innerHTML = "";
+        var colors = ["#f94144", "#f3722c", "#f9c74f", "#90be6d", "#43aa8b", "#577590", "#ff70a6", "#ffb703"];
+        for (var i = 0; i < 46; i++) {
+          var d = document.createElement("i");
+          d.style.left = (Math.random() * 100) + "%";
+          d.style.background = colors[i % colors.length];
+          d.style.width = (8 + Math.random() * 8) + "px";
+          d.style.height = (10 + Math.random() * 10) + "px";
+          d.style.animationDelay = (Math.random() * 0.35) + "s";
+          d.style.animationDuration = (2.2 + Math.random() * 1.4) + "s";
+          if (Math.random() < 0.5) d.style.borderRadius = "50%";
+          confettiBox.appendChild(d);
+        }
+        setTimeout(function () { confettiBox.innerHTML = ""; }, 4600);
+      }
+      function resetRound() { resetToRound(roundNumber < 20 ? roundNumber + 1 : 20); }
+      function resetToRound(n) {
+        picked = 0; counted = 0; busy = false;
+        roundNumber = Math.max(1, Math.min(20, n));
+        earCount = roundNumber;
+        updateRoundLabel();
+        countPopup.classList.add("hidden");
+        finaleOverlay.classList.add("hidden");
+        hideEl(seedG); hideEl(sproutG); hideEl(plantG); hideEl(waterCan); hideEl(sunFx);
+        drops.classList.remove("go");
+        skySun.classList.remove("beaming");
+        setPlantScale(0.5);
+        buildStalks();
+        var swayEls = plantG.querySelectorAll(".sway");
+        for (var sw = 0; sw < swayEls.length; sw++) swayEls[sw].classList.remove("pop-in");
+        basketRow.innerHTML = "";
+        basketRow.classList.remove("counting", "many", "lots");
+        bigNumber.classList.remove("show");
+        countBtn.classList.add("hidden");
+        againBtn.classList.add("hidden");
+        actionBtn.classList.remove("busy");
+        setStage("plant", true);
+        logEvent("Round " + roundNumber + " ready — " + earCount + (earCount === 1 ? " corn" : " corns") + " to grow");
+      }
+
+      /* ================= Wiring ================= */
+      actionBtn.addEventListener("click", function () {
+        if (stage === "plant") doPlant();
+        else if (stage === "water1" || stage === "water2") doWater();
+        else if (stage === "sun1" || stage === "sun2") doSun();
+      });
+      skySun.addEventListener("click", function () { noteSunTap(); doSun(); });
+      skySun.setAttribute("role", "button");
+      skySun.setAttribute("aria-label", STR.sunLabel);
+      skySun.setAttribute("tabindex", "0");
+      skySun.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); noteSunTap(); doSun(); }
+      });
+      $("scene").addEventListener("click", function (ev) {
+        if (stage === "plant" && ev.target === $("scene")) doPlant();
+      });
+      seedG.addEventListener("click", function () { doPlant(); });
+      $("moundG").addEventListener("click", function () { doPlant(); });
+      // Ear click/key handlers are attached in buildEars() when each
+      // round's ears are created (1 ear in round 1, up to 20).
+      basketRow.addEventListener("click", function (ev) {
+        var slot = ev.target;
+        while (slot && !(slot.classList && slot.classList.contains("slot"))) slot = slot.parentNode;
+        if (slot) countEar(slot);
+      });
+      countBtn.addEventListener("click", function () { ensureAudio(); startCounting(); });
+      countPopupBtn.addEventListener("click", function () { ensureAudio(); popSfx(); beginCounting(); });
+      againBtn.addEventListener("click", function () { ensureAudio(); resetRound(); playVoice("plant", true); });
+      finaleBtn.addEventListener("click", function () {
+        ensureAudio(); popSfx();
+        finaleOverlay.classList.add("hidden");
+        resetToRound(1);
+        var homeOverlay = $("startOverlay");
+        var homeInput = $("startInput");
+        var homeMsg = $("startMsg");
+        if (homeInput) homeInput.value = "";
+        if (homeMsg) homeMsg.textContent = "";
+        if (homeOverlay) homeOverlay.classList.remove("hidden");
+        try { $("startBeginBtn").focus(); } catch (e) {}
+        logEvent("Finale: Back to Home Screen — start choice shown (start over or enter a round)");
+      });
+
+      /* ---------- Yellow "Back to menu" (top-left, every game screen) ----------
+         One tap stops the current round, her voice, and the music, closes
+         any open sheet, and leaves preview mode if it was on. On the Corn
+         Games Arcade site (Vercel) it then goes to the arcade main menu
+         (./index.html); in the Muse artifact it lands on this game's
+         Home Screen (the start choice), reset to a fresh Round 1. */
+      $("backMenuBtn").addEventListener("click", function () {
+        stopVoice();
+        stopMusic();
+        musicWasPlaying = false;
+        closeMenu();
+        $("howOverlay").classList.add("hidden");
+        $("debugOverlay").classList.add("hidden");
+        $("cheatOverlay").classList.add("hidden");
+        countPopup.classList.add("hidden");
+        finaleOverlay.classList.add("hidden");
+        if (previewMode) { previewMode = false; $("previewBar").classList.add("hidden"); }
+        resetToRound(1);
+        logEvent("Back to menu pressed — round, voice, and music stopped");
+        if (window.location.hostname === "corn-games.vercel.app") {
+          window.location.href = "./index.html";
+          return;
+        }
+        var homeOverlay2 = $("startOverlay");
+        var homeInput2 = $("startInput");
+        var homeMsg2 = $("startMsg");
+        if (homeInput2) homeInput2.value = "";
+        if (homeMsg2) homeMsg2.textContent = "";
+        $("titleOverlay").classList.add("hidden");
+        if (homeOverlay2) homeOverlay2.classList.remove("hidden");
+        try { $("startBeginBtn").focus(); } catch (e) {}
+        logEvent("Back to menu: Home Screen shown (start over or enter a round)");
+      });
+
+      /* Everything lives on this one screen, so the game is ready the
+         moment the page opens. The first tap anywhere wakes the audio
+         (browsers require a tap first) and starts the music + greeting. */
+      var started = false;
+      function startGame() {
+        if (started) return;
+        started = true;
+        logEvent("First tap — starting the music");
+        ensureAudio();
+        primeVoice();
+        musicStarted = true;
+        startMusic();
+        playVoice("plant");
+      }
+      document.addEventListener("pointerdown", startGame);
+      document.addEventListener("keydown", startGame);
+      /* If the music ever stalls (audio suspended, tab switched), the
+         next tap anywhere wakes the audio and restarts it. */
+      document.addEventListener("pointerdown", function () {
+        if (!started || !soundOn) return;
+        ensureAudio();
+        if (musicStarted && !musicPlaying && !document.hidden) startMusic();
+      });
+
+      var howOverlay = $("howOverlay");
+      function openHow() { howOverlay.classList.remove("hidden"); logEvent("How to Play opened"); }
+      function closeHow() { howOverlay.classList.add("hidden"); }
+      $("howClose").addEventListener("click", closeHow);
+      howOverlay.addEventListener("click", function (ev) { if (ev.target === howOverlay) closeHow(); });
+
+      /* ---------- Hamburger menu: How to Play + Debug Log ---------- */
+      var menuPanel = $("menuPanel"), menuBtn = $("menuBtn");
+      function closeMenu() { menuPanel.classList.add("hidden"); menuBtn.setAttribute("aria-expanded", "false"); }
+      menuBtn.addEventListener("click", function () {
+        ensureAudio();
+        var nowHidden = menuPanel.classList.toggle("hidden");
+        menuBtn.setAttribute("aria-expanded", nowHidden ? "false" : "true");
+        if (!nowHidden) popSfx();
+      });
+      document.addEventListener("pointerdown", function (ev) {
+        if (menuPanel.classList.contains("hidden")) return;
+        if (menuPanel.contains(ev.target) || menuBtn.contains(ev.target)) return;
+        closeMenu();
+      });
+      $("menuHow").addEventListener("click", function () { closeMenu(); openHow(); });
+      $("menuDebug").addEventListener("click", function () {
+        closeMenu();
+        renderDebugLog();
+        $("debugOverlay").classList.remove("hidden");
+        logEvent("Debug Log opened");
+      });
+      $("debugClose").addEventListener("click", function () { $("debugOverlay").classList.add("hidden"); });
+      $("debugOverlay").addEventListener("click", function (ev) { if (ev.target === $("debugOverlay")) $("debugOverlay").classList.add("hidden"); });
+
+      /* ---------- Cheat: tap the sun 5 times, type a round, jump ---------- */
+      var sunTaps = 0, lastSunTap = 0;
+      var cheatOverlay = $("cheatOverlay"), cheatInput = $("cheatInput"), cheatMsg = $("cheatMsg");
+      function noteSunTap() {
+        var now = Date.now();
+        if (now - lastSunTap > 4000) sunTaps = 0;
+        lastSunTap = now;
+        sunTaps++;
+        if (sunTaps >= 5) { sunTaps = 0; openCheat(); }
+        else logEvent("Sun tap " + sunTaps + " of 5");
+      }
+      function openCheat() {
+        if (previewMode) return;
+        ensureAudio(); popSfx();
+        cheatInput.value = "";
+        cheatMsg.textContent = "";
+        cheatOverlay.classList.remove("hidden");
+        logEvent("Cheat opened — go to a round");
+        setTimeout(function () { try { cheatInput.focus(); } catch (e) {} }, 80);
+      }
+      function closeCheat() { cheatOverlay.classList.add("hidden"); }
+      function submitCheat() {
+        var n = parseInt(cheatInput.value, 10);
+        if (isNaN(n) || n < 1 || n > 20) {
+          cheatMsg.textContent = STR.invalidRound;
+          logEvent("Cheat: \"" + cheatInput.value + "\" is not a round from 1 to 20");
+          return;
+        }
+        closeCheat();
+        ensureAudio();
+        logEvent("Cheat: jumping to round " + n);
+        resetToRound(n);
+        playVoice("plant", true);
+      }
+      $("cheatGo").addEventListener("click", submitCheat);
+      $("cheatCancel").addEventListener("click", function () { popSfx(); closeCheat(); });
+      cheatInput.addEventListener("keydown", function (ev) { if (ev.key === "Enter") { ev.preventDefault(); submitCheat(); } });
+      cheatOverlay.addEventListener("click", function (ev) { if (ev.target === cheatOverlay) closeCheat(); });
+
+      /* ---------- Start choice: begin at Round 1 or type a round ---------- */
+      var startOverlay = $("startOverlay"), startInput = $("startInput"), startMsg = $("startMsg");
+      function chooseStart(n) {
+        startOverlay.classList.add("hidden");
+        ensureAudio();
+        logEvent("Start choice: begin at round " + n);
+        if (n !== roundNumber) resetToRound(n);
+        // The first-tap greeting usually covers the plant prompt; if she
+        // has already finished speaking, say it now for the chosen round.
+        if (!currentVoice) playVoice("plant");
+      }
+      $("startBeginBtn").addEventListener("click", function () { popSfx(); chooseStart(1); });
+      function submitStart() {
+        var n = parseInt(startInput.value, 10);
+        if (isNaN(n) || n < 1 || n > 20) {
+          startMsg.textContent = STR.invalidRound;
+          logEvent("Start choice: \"" + startInput.value + "\" is not a round from 1 to 20");
+          return;
+        }
+        popSfx();
+        chooseStart(n);
+      }
+      $("startGoBtn").addEventListener("click", submitStart);
+      startInput.addEventListener("keydown", function (ev) { if (ev.key === "Enter") { ev.preventDefault(); submitStart(); } });
+
+      /* ---------- Title screen: Enter Game goes to the Home Screen ---------- */
+      var titleOverlay = $("titleOverlay");
+      $("enterGameBtn").addEventListener("click", function () {
+        ensureAudio(); popSfx();
+        titleOverlay.classList.add("hidden");
+        startOverlay.classList.remove("hidden");
+        try { $("startBeginBtn").focus(); } catch (e) {}
+        logEvent("Enter Game pressed — Home Screen shown (start over or enter a round)");
+      });
+
+      /* ---------- Hidden cheat: tap the red barn on the title art 5 times
+         to preview the harvest layout for every round, 1 through 20.
+         Deliberately NOT mentioned in How to Play, the menu, or the Home
+         start choice. The preview reuses the real game screen, set to the
+         exact harvest moment from the screenshot: full-grown stalks with
+         every ear showing, the step tracker, the "Round x · Grow x ears
+         of corn" label, the "The corn is ready!" prompt, and the brown
+         basket with that round's slots/rows. It never starts a real game:
+         ears can't be picked while previewing, and leaving the preview
+         resets the screen to a fresh Round 1 behind the title screen. */
+      var previewMode = false, previewRound = 1;
+      var barnTaps = 0, lastBarnTap = 0;
+      var previewBar = $("previewBar"), previewText = $("previewText"), previewNext = $("previewNext");
+      function showPreviewRound(n) {
+        previewRound = n;
+        roundNumber = n;
+        earCount = n;
+        picked = 0; counted = 0; busy = false;
+        updateRoundLabel();
+        countPopup.classList.add("hidden");
+        finaleOverlay.classList.add("hidden");
+        hideEl(seedG); hideEl(sproutG); hideEl(waterCan); hideEl(sunFx);
+        drops.classList.remove("go");
+        skySun.classList.remove("beaming");
+        setPlantScale(1.02);
+        buildEars();
+        showEl(plantG);
+        var ears = plantWrap.querySelectorAll(".earG");
+        for (var i = 0; i < ears.length; i++) showEl(ears[i]);
+        buildBasket();
+        setStage("harvest", true);
+        previewText.textContent = "Round " + n + " of 20";
+        previewNext.innerHTML = n >= 20 ? "<span>" + STR.backToTitle + "</span>" : "<span>" + STR.nextRound + " &rarr;</span>";
+        logEvent("Layout preview: showing Round " + n + " harvest layout");
+      }
+      function openPreview() {
+        ensureAudio(); popSfx();
+        previewMode = true;
+        titleOverlay.classList.add("hidden");
+        previewBar.classList.remove("hidden");
+        showPreviewRound(1);
+        try { previewNext.focus(); } catch (e) {}
+        logEvent("Barn cheat: layout preview opened at Round 1");
+      }
+      function closePreview() {
+        popSfx();
+        previewMode = false;
+        previewBar.classList.add("hidden");
+        resetToRound(1);
+        titleOverlay.classList.remove("hidden");
+        try { $("enterGameBtn").focus(); } catch (e) {}
+        logEvent("Layout preview closed — back to the title screen");
+      }
+      $("barnHotspot").addEventListener("click", function () {
+        var now = Date.now();
+        if (now - lastBarnTap > 4000) barnTaps = 0;
+        lastBarnTap = now;
+        barnTaps++;
+        logEvent("Barn tap " + barnTaps + " of 5");
+        if (barnTaps >= 5) { barnTaps = 0; openPreview(); }
+      });
+      $("previewClose").addEventListener("click", function () { if (previewMode) closePreview(); });
+      previewNext.addEventListener("click", function () {
+        if (!previewMode) return;
+        if (previewRound >= 20) closePreview();
+        else { popSfx(); showPreviewRound(previewRound + 1); }
+      });
+
+      buildStalks();
+      logEvent("Let\u2019s Count Corn loaded — title screen shown (Enter Game)");
+      try { $("enterGameBtn").focus(); } catch (e) {}
+      updateSoundButtons();
+      updateRoundLabel();
+      setStage("plant", true);
+    </script>
+  </body>
+</html>
