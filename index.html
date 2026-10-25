@@ -18,37 +18,44 @@
     padding: 32px 16px;
   }
   h1 { font-size: clamp(1.6rem, 6vw, 2.6rem); text-align: center; color: #ffe600; margin-bottom: 8px; }
-  p.sub { text-align: center; color: #b6ffb6; margin-bottom: 28px; }
-  .games { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 480px; }
+  p.sub { text-align: center; color: #b6ffb6; margin-bottom: 24px; }
+  .banner { width: 100%; max-width: 480px; margin-bottom: 28px; }
+  .banner img { width: 100%; display: block; border-radius: 14px; border: 2px solid #ffe600; }
+  .banner p { text-align: center; color: #b6ffb6; margin-top: 10px; font-size: 0.95rem; }
+  .games { display: flex; flex-direction: column; gap: 18px; width: 100%; max-width: 480px; }
   a.game {
     display: block;
-    text-align: center;
     text-decoration: none;
-    font-size: 1.25rem;
-    font-weight: 700;
     color: #0a1f0a;
     background: #ffe600;
-    padding: 18px 12px;
     border-radius: 14px;
+    overflow: hidden;
+    padding-bottom: 14px;
   }
   a.game:active { transform: scale(0.98); }
-  .game .score-slot { display: block; font-size: 0.85rem; font-weight: 500; margin-top: 6px; opacity: 0.85; }
+  a.game img { width: 100%; display: block; }
+  .game .name { display: block; text-align: center; font-size: 1.25rem; font-weight: 700; padding: 14px 12px 0; }
+  .game .score-slot { display: block; text-align: center; font-size: 0.85rem; font-weight: 500; margin-top: 6px; opacity: 0.85; }
   footer { margin-top: 28px; font-size: 0.85rem; color: #8fbf8f; text-align: center; max-width: 480px; }
 </style>
 </head>
 <body>
   <h1>🌽 Corn Games Arcade 🌽</h1>
   <p class="sub">Pick a game — all free, all in your browser.</p>
+  <div class="banner">
+    <img src="./hub-pics/collage.jpg" alt="All nine Corn Games">
+    <p>Tap a picture to play.</p>
+  </div>
   <div class="games">
-    <a class="game" href="./boxing.html">🥊 Boxing: Heavyweight Champ<span class="score-slot" data-hub-score="boxing">Session best: —</span></a>
-    <a class="game" href="./buck-shot.html">🦌 Buck Shot<span class="score-slot" data-hub-score="buck-shot">Session best: —</span></a>
-    <a class="game" href="./football.html">🏈 Football: Field Goal Champion<span class="score-slot" data-hub-score="football">Session best: —</span></a>
-    <a class="game" href="./loop-game.html">🏃 Loop Game</a>
-    <a class="game" href="./lets-count-corn.html">👶 Learn to Count</a>
-    <a class="game" href="./soccer-goal.html">⚽ Soccer Goal<span class="score-slot" data-hub-score="soccer-goal">Session best: —</span></a>
-    <a class="game" href="./super-retro-bros.html">🌽 Super Retro Bros<span class="score-slot" data-hub-score="super-retro-bros">Session best: —</span></a>
-    <a class="game" href="./tractor-race.html">🚜 Tractor Race: Retro Edition<span class="score-slot" data-hub-score="tractor-race">Session best: —</span></a>
-    <a class="game" href="./parkinsons-challenge.html">🧠 Parkinson's Challenge</a>
+    <a class="game" href="./boxing.html"><img src="./hub-pics/boxing.jpg" alt="Boxing: Heavyweight Champ"><span class="name">🥊 Boxing: Heavyweight Champ</span><span class="score-slot" data-hub-score="boxing">Session best: —</span></a>
+    <a class="game" href="./buck-shot.html"><img src="./hub-pics/buck-shot.jpg" alt="Buck Shot"><span class="name">🦌 Buck Shot</span><span class="score-slot" data-hub-score="buck-shot">Session best: —</span></a>
+    <a class="game" href="./football.html"><img src="./hub-pics/football.jpg" alt="Football: Field Goal Champion"><span class="name">🏈 Football: Field Goal Champion</span><span class="score-slot" data-hub-score="football">Session best: —</span></a>
+    <a class="game" href="./loop-game.html"><img src="./hub-pics/loop-game.jpg" alt="Loop Game"><span class="name">🏃 Loop Game</span></a>
+    <a class="game" href="./lets-count-corn.html"><img src="./hub-pics/lets-count-corn.jpg" alt="Learn to Count"><span class="name">👶 Learn to Count</span></a>
+    <a class="game" href="./soccer-goal.html"><img src="./hub-pics/soccer-goal.jpg" alt="Soccer Goal"><span class="name">⚽ Soccer Goal</span><span class="score-slot" data-hub-score="soccer-goal">Session best: —</span></a>
+    <a class="game" href="./super-retro-bros.html"><img src="./hub-pics/super-retro-bros.jpg" alt="Super Retro Bros"><span class="name">🌽 Super Retro Bros</span><span class="score-slot" data-hub-score="super-retro-bros">Session best: —</span></a>
+    <a class="game" href="./tractor-race.html"><img src="./hub-pics/tractor-race.jpg" alt="Tractor Race: Retro Edition"><span class="name">🚜 Tractor Race: Retro Edition</span><span class="score-slot" data-hub-score="tractor-race">Session best: —</span></a>
+    <a class="game" href="./parkinsons-challenge.html"><img src="./hub-pics/parkinsons-challenge.jpg" alt="Parkinson's Challenge"><span class="name">🧠 Parkinson's Challenge</span></a>
   </div>
   <footer>Your saves live only in your own browser — nothing you do in a game is sent anywhere.</footer>
   <script src="./shared/hub.js"></script>
