@@ -390,6 +390,10 @@
       }
       .game-title .t-super { color: var(--yellow); text-shadow: 0 0 14px rgba(255,225,77,.55), 3px 3px 0 #b3541e; }
       .game-title .t-break { color: var(--cyan); text-shadow: 0 0 14px rgba(55,230,255,.55), 3px 3px 0 #14406e; }
+      /* The "2" after BREAK is pulled left, tight against the K:
+         the wide word space in this pixel font otherwise strands
+         it far to the right of the title. */
+      .game-title .t-two { display: inline-block; margin-left: -12px; color: var(--cyan); text-shadow: 0 0 14px rgba(55,230,255,.55), 3px 3px 0 #14406e; }
       .tagline {
         font-family: "Press Start 2P", monospace;
         font-size: 8px; letter-spacing: 1px;
@@ -773,13 +777,16 @@
         -webkit-user-select: none;
       }
       /* Brick Break 2 version badge: the title artwork is the
-         original game's pic, so a big arcade "2" sits on its
-         lower-right corner to mark this as the second game. It is
-         decoration only — pointer events pass through it. */
+         original game's pic, so a big arcade "2" sits along its
+         bottom edge to mark this as the second game. It is pulled
+         well in from the right edge — clear of the little ship
+         sprite baked into the artwork's corner — so it reads as
+         part of the title instead of a sticker in the corner. It
+         is decoration only — pointer events pass through it. */
       .title-art-wrap { position: relative; width: 100%; }
       .title-ver {
         position: absolute;
-        right: 10px; bottom: 8px;
+        right: 76px; bottom: 8px;
         font-family: "Press Start 2P", monospace;
         font-size: clamp(26px, 8vw, 40px);
         line-height: 1;
@@ -980,7 +987,7 @@
         <div class="overlay hidden" id="startOverlay">
           <button id="cornerBrick" type="button" aria-label="Top-left corner brick"></button>
           <button id="cornerBrickRight" type="button" aria-label="Top-right corner"></button>
-          <h1 class="game-title" id="gameTitle" title="Brick Break 2"><span class="t-super">BRICK</span><br /><span class="t-break">BREAK 2</span></h1>
+          <h1 class="game-title" id="gameTitle" title="Brick Break 2"><span class="t-super">BRICK</span><br /><span class="t-break">BREAK</span> <span class="t-two">2</span></h1>
           <div class="score-legend" aria-hidden="true">
             <span class="legend-item"><span class="chip" style="background:#39e75f"></span><span class="pts">7 PTS</span></span>
             <span class="legend-item"><span class="chip" style="background:#7d0d45"></span><span class="pts">5 PTS</span></span>
