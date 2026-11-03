@@ -93,6 +93,8 @@
       }
       .back-menu-btn {
         appearance: none;
+        display: inline-block;
+        text-decoration: none;
         border: 0;
         border-radius: 10px;
         background: linear-gradient(180deg, #ffe14d, #f5a623);
@@ -907,7 +909,7 @@
 
     <div class="menu-wrap">
       <div class="top-bar">
-        <button class="back-menu-btn" id="backToMenuBtn" type="button" aria-label="Back to menu">◀ BACK TO MENU</button>
+        <a class="back-menu-btn" id="backToMenuBtn" href="https://corn-games.vercel.app/" aria-label="Back to Corn Games menu">◀ BACK TO MENU</a>
       </div>
       <div class="hud">
         <div class="stat">
@@ -2990,7 +2992,7 @@
         // launchBalls() is guarded, so the second call is a no-op.
         document.addEventListener('pointerdown', function (e) {
           if (phase !== 'ready') return;
-          if (e.target && e.target.closest && e.target.closest('button, .menu-panel, .overlay')) return;
+          if (e.target && e.target.closest && e.target.closest('button, a, .menu-panel, .overlay')) return;
           ac();
           launchBalls();
         });
@@ -3290,19 +3292,14 @@
           menuPanel.classList.add('hidden');
           toTitle();
         });
-        // Yellow Back to Menu button at the very top: one tap from
-        // anywhere — title pic, mid-game, paused, or an end screen —
-        // straight back to the Home / menu screen, with the current
-        // run cleared so START there begins a clean new game. It is
-        // a real <button>, so the tap-anywhere-to-launch handler
-        // leaves it alone and it never launches a waiting ball.
-        document.getElementById('backToMenuBtn').addEventListener('click', function () {
-          menuPanel.classList.add('hidden');
-          ac();
-          if (phase === 'splash') { musicWanted = true; startMusic(); }
-          toHomeScreen();
-          beep(523, 0.07, 'square', 0.06);
-        });
+        // Yellow Back to Menu at the very top is a plain link
+        // (see #backToMenuBtn in the markup): it leaves this game
+        // entirely and goes back to the Corn Games page — the hub
+        // menu this game was picked from — NOT to this game's own
+        // Home Screen. No click handler here on purpose: the
+        // browser follows the link. It is a real <a>, and the
+        // tap-anywhere-to-launch handler exempts links, so tapping
+        // it never launches a waiting ball.
 
         function setSound(on) {
           soundOn = on;
