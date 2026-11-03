@@ -26,14 +26,14 @@
            screen height. The canvas is 7:10 (width:height), so the
            width is capped at the value that makes the whole page —
            HUD (~50px) + cabinet + controls (~56px) + credit and
-           body padding (~86px) ≈ 192px of fixed overhead — fit
+           body padding (~86px) ≈ 234px of fixed overhead — fit
            inside the viewport height. On a tall screen the 480px
            cap wins (the familiar iPhone column, centred); on a
            shorter/wider screen like an iPad webview the height cap
            wins and the cabinet shrinks until the paddle at the
            bottom of the playfield is on screen again. */
-        --cab-w: min(480px, max(220px, calc((100vh - 192px) * 0.7 + 22px)));
-        --cab-w: min(480px, max(220px, calc((100dvh - 192px) * 0.7 + 22px)));
+        --cab-w: min(480px, max(220px, calc((100vh - 234px) * 0.7 + 22px)));
+        --cab-w: min(480px, max(220px, calc((100dvh - 234px) * 0.7 + 22px)));
         /* svh = the SMALLEST visible height (browser chrome fully
            shown) — the safest CSS-only guess. The script then
            replaces this with an exact measurement of the visible
@@ -41,7 +41,7 @@
            can report the full device height while the app shell
            covers part of the screen, which is exactly how the
            bottom of the game used to get cut off. */
-        --cab-w: min(480px, max(220px, calc((100svh - 192px) * 0.7 + 22px)));
+        --cab-w: min(480px, max(220px, calc((100svh - 234px) * 0.7 + 22px)));
       }
       * { box-sizing: border-box; }
       html, body { margin: 0; padding: 0; }
@@ -81,6 +81,32 @@
         overscroll-behavior: none;
       }
 
+
+      /* ---------- Back to menu ---------- */
+      /* One persistent yellow pill at the very top, visible on
+         every screen. In the Muse artifact it stops the run and
+         the music and lands on the Brick Break Home Screen; on
+         corn-games.vercel.app it leaves for the Arcade menu. */
+      .top-nav {
+        display: flex;
+        justify-content: flex-start;
+        margin-bottom: 8px;
+      }
+      .back-menu-btn {
+        appearance: none;
+        border: 0;
+        border-radius: 999px;
+        background: linear-gradient(180deg, #ffd94d, #f5a623);
+        color: #231a02;
+        font-family: "Press Start 2P", monospace;
+        font-size: 9px;
+        line-height: 1;
+        padding: 11px 14px;
+        cursor: pointer;
+        box-shadow: 0 4px 0 #9c6508, 0 8px 20px rgba(245, 166, 35, .3);
+        white-space: nowrap;
+      }
+      .back-menu-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #9c6508; }
 
       /* ---------- HUD ---------- */
       .hud {
@@ -521,7 +547,7 @@
       /* ---------- Menu panel ---------- */
       .menu-panel {
         position: absolute;
-        top: 52px; right: 10px;
+        top: 96px; right: 10px;
         z-index: 20;
         width: min(270px, calc(100vw - 40px));
         background: #0d1122;
@@ -703,16 +729,18 @@
 
       /* Short viewports (landscape phones, short webviews): compact
          the fixed rows and drop the credit line, so the height cap
-         in --cab-w can use the smaller overhead (~140px) and the
+         in --cab-w can use the smaller overhead (~182px) and the
          cabinet — paddle included — still fits whole on screen.
          Kept last so these rules win over the base rows above. */
       @media (max-height: 620px) {
         :root {
-          --cab-w: min(480px, max(200px, calc((100vh - 140px) * 0.7 + 22px)));
-          --cab-w: min(480px, max(200px, calc((100dvh - 140px) * 0.7 + 22px)));
-          --cab-w: min(480px, max(200px, calc((100svh - 140px) * 0.7 + 22px)));
+          --cab-w: min(480px, max(200px, calc((100vh - 182px) * 0.7 + 22px)));
+          --cab-w: min(480px, max(200px, calc((100dvh - 182px) * 0.7 + 22px)));
+          --cab-w: min(480px, max(200px, calc((100svh - 182px) * 0.7 + 22px)));
         }
         body { padding-top: 8px; padding-bottom: 8px; }
+        .top-nav { margin-bottom: 6px; }
+        .back-menu-btn { padding: 9px 12px; }
         .hud { margin-bottom: 6px; }
         .controls { margin-top: 8px; }
         .controls .ctl-btn { padding-top: 9px; padding-bottom: 9px; }
@@ -723,6 +751,9 @@
   <body>
 
     <div class="menu-wrap">
+      <div class="top-nav">
+        <button class="back-menu-btn" id="backToMenuBtn" type="button">← Back to menu</button>
+      </div>
       <div class="hud">
         <div class="stat">
           <div class="label">SCORE</div>
@@ -2832,6 +2863,23 @@
           showOverlay('start');
         }
 
+        // BACK TO MENU: the persistent yellow pill at the top.
+        // It stops the current run and the music (musicWanted is
+        // cleared, so nothing restarts it on its own). On the Corn
+        // Games site it leaves for the Arcade menu; inside the Muse
+        // artifact there is no arcade page, so it lands on this
+        // game's own Home Screen instead.
+        function backToMenu() {
+          musicWanted = false;
+          stopMusic();
+          if (window.location.hostname === 'corn-games.vercel.app') {
+            window.location.href = './index.html';
+            return;
+          }
+          toHomeScreen();
+        }
+        document.getElementById('backToMenuBtn').addEventListener('click', backToMenu);
+
         // Menu
         var menuPanel = document.getElementById('menuPanel');
         document.getElementById('menuBtn').addEventListener('click', function (e) {
@@ -2917,8 +2965,9 @@
           if (!vh || !vw || !fitMenuWrap || !fitControls) return;
           var cs = window.getComputedStyle(document.body);
           var padV = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+          var fitHud = fitMenuWrap.querySelector('.hud');
           var hudH = fitMenuWrap.offsetHeight +
-            (parseFloat(window.getComputedStyle(fitMenuWrap.firstElementChild).marginBottom) || 0);
+            (fitHud ? (parseFloat(window.getComputedStyle(fitHud).marginBottom) || 0) : 0);
           var ctlH = fitControls.offsetHeight +
             (parseFloat(window.getComputedStyle(fitControls).marginTop) || 0);
           var credH = 0;
