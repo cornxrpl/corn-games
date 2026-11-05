@@ -917,6 +917,7 @@
       <button class="ctl-btn" id="soundBtn">SOUND: ON</button>
     </div>
 
+    <script src="./shared/hub.js"></script>
     <script>
       (function () {
         'use strict';
@@ -1676,6 +1677,7 @@
               phase = 'over';
               var wasRecord = score > hiScore && score > 0;
               if (wasRecord) hiScore = score;
+              if (window.Hub) Hub.submitScore('brick-break', score);
               document.getElementById('finalScore').innerHTML =
                 'SCORE ' + pad(score) + (wasRecord ? '<br />★ NEW HI-SCORE ★' : '');
               document.getElementById('overMsg').textContent =
@@ -1728,6 +1730,7 @@
         function winGame() {
           phase = 'win';
           if (score > hiScore) hiScore = score;
+          if (window.Hub) Hub.submitScore('brick-break', score);
           document.getElementById('winScore').innerHTML =
             'SCORE ' + pad(score) + '<br />★ YOU BEAT THE GAME ★';
           updateHUD();
