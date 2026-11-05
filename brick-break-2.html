@@ -1232,6 +1232,7 @@
 
     <p class="credit">1 PLAYER</p>
 
+    <script src="./shared/hub.js"></script>
     <script>
       (function () {
         'use strict';
@@ -2170,6 +2171,7 @@
             phase = 'over';
             var wasRecord = score > hiScore && score > 0;
             if (wasRecord) hiScore = score;
+            if (window.Hub) Hub.submitScore('brick-break-2', score);
             document.getElementById('finalScore').innerHTML =
               'SCORE ' + pad(score) + (wasRecord ? '<br />★ NEW HI-SCORE ★' : '');
             fillTokenSummaries();
@@ -2262,6 +2264,7 @@
           // paid — a missed brick pays nothing, even the last one.
           fallingBricks = [];
           if (score > hiScore) hiScore = score;
+          if (window.Hub) Hub.submitScore('brick-break-2', score);
           document.getElementById('winScore').innerHTML =
             'SCORE ' + pad(score) +
             '<br />CAUGHT ' + levelCaught + ' OF ' + levelBricksTotal + ' — ' + caughtPct() + '%' +
