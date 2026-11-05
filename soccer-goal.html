@@ -3063,6 +3063,7 @@
         }
 
         updateScore();
+        if (window.Hub) Hub.submitScore('soccer-goal', game.coins);
         els.finalScore.textContent = game.goals + (game.goals === 1 ? ' goal' : ' goals') + ' from ' + kicksTaken + (kicksTaken === 1 ? ' kick' : ' kicks') + ' · ' + percent + '%';
         if (worldCupBonus > 0) {
           els.rewardLine.innerHTML = '<span class="coin-icon" aria-hidden="true">C</span><span>You earned ' + reward + ' coins + ' + worldCupBonus.toLocaleString() + ' World Cup bonus</span>';
