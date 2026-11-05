@@ -1,17 +1,19 @@
-/* shared/hub.js — CORN Games Hub: session-only scoring + navigation.
+/* shared/hub.js — CORN Games Hub: persistent per-game best scores + navigation.
  *
- * Olden-days rules: NO saved high scores, NO database, NO persistence of any
- * kind. Scores live in sessionStorage, which the browser clears when the tab
- * closes. Reloading any hub page wipes all session scores.
+ * Best scores live in localStorage on the player's OWN device only — nothing
+ * is sent anywhere, no database, no account, no login. Closing the tab or
+ * the browser keeps them; only the per-game Reset button on the menu clears
+ * one, and only after a confirmation. Scores are per device/browser (no
+ * cross-device sync) — that is the accepted trade for staying on-device.
  */
 (function () {
   "use strict";
 
-  var KEY = "cornHub.sessionScores.v1";
+  var KEY = "cornHub.bestScores.v1";
 
   function readScores() {
     try {
-      var raw = window.sessionStorage.getItem(KEY);
+      var raw = window.localStorage.getItem(KEY);
       if (!raw) return {};
       var data = JSON.parse(raw);
       return data && typeof data === "object" ? data : {};
@@ -22,26 +24,10 @@
 
   function writeScores(scores) {
     try {
-      window.sessionStorage.setItem(KEY, JSON.stringify(scores));
+      window.localStorage.setItem(KEY, JSON.stringify(scores));
     } catch (e) {
       /* Storage unavailable: scores just do not persist. */
     }
-  }
-
-  function pageWasReloaded() {
-    try {
-      var nav = performance.getEntriesByType("navigation")[0];
-      return !!(nav && nav.type === "reload");
-    } catch (e) {
-      return false;
-    }
-  }
-
-  /* Reloading any hub page resets all scores. */
-  if (pageWasReloaded()) {
-    try {
-      window.sessionStorage.removeItem(KEY);
-    } catch (e) {}
   }
 
   function fillMenuSlots() {
@@ -51,12 +37,12 @@
     slots.forEach(function (el) {
       var id = el.getAttribute("data-hub-score");
       var best = typeof scores[id] === "number" ? scores[id] : null;
-      el.textContent = best === null ? "Session best: —" : "Session best: " + best;
+      el.textContent = best === null ? "Best: —" : "Best: " + best;
     });
   }
 
   var Hub = {
-    /* Record a run's score. Keeps only the session best per game. */
+    /* Record a run's score. Keeps only the best per game. */
     submitScore: function (gameId, score) {
       var n = Number(score);
       if (!isFinite(n)) return;
@@ -70,6 +56,16 @@
     getBest: function (gameId) {
       var scores = readScores();
       return typeof scores[gameId] === "number" ? scores[gameId] : null;
+    },
+
+    /* Clear one game's saved best score only. Other games are untouched. */
+    resetScore: function (gameId) {
+      var scores = readScores();
+      if (typeof scores[gameId] !== "number") return false;
+      delete scores[gameId];
+      writeScores(scores);
+      fillMenuSlots();
+      return true;
     },
 
     /* Render the back bar at the top of a game page. The bar is fixed, and
@@ -160,7 +156,26 @@
 
   window.Hub = Hub;
 
-  /* Menu pages: fill score slots on load and on back/forward restore. */
-  document.addEventListener("DOMContentLoaded", fillMenuSlots);
+  /* Menu pages: fill score slots on load and on back/forward restore, and
+     wire each card's Reset button (confirm first, clears that game only). */
+  function wireResetButtons() {
+    var btns = document.querySelectorAll("[data-hub-reset]");
+    btns.forEach(function (btn) {
+      btn.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        var id = btn.getAttribute("data-hub-reset");
+        var name = btn.getAttribute("data-hub-name") || id;
+        if (window.confirm("Clear the saved best score for " + name + "?")) {
+          Hub.resetScore(id);
+        }
+      });
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    fillMenuSlots();
+    wireResetButtons();
+  });
   window.addEventListener("pageshow", fillMenuSlots);
 })();
