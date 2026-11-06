@@ -600,6 +600,7 @@
   <div class="howto" id="howto">
     <div class="debug-head"><h3>How to Play</h3><button class="sheet-close" id="howCloseBtn" type="button">✕ Close</button></div>
     <ul>
+      <li><strong>Music</strong> starts the moment you tap <strong>ENTER GAME</strong> and plays while you play. It pauses on its own when you leave the game screen, and you can turn all sound off any time with <strong>Sound</strong> in the ☰ Menu.</li>
       <li>You get <strong>8 balls</strong> each round.</li>
       <li><strong>Aim</strong> and <strong>Power</strong> slide back and forth on their own, like the football game — Aim sweeps left to right and back, Power sweeps soft to hard and back.</li>
       <li>Tap <strong>STOP</strong> on the Aim meter (or tap anywhere on the Aim row) to stop it — where it stops is your angle for the throw. It stays stopped while Power keeps moving.</li>
@@ -786,6 +787,72 @@
   function sndPrint(){ tone(880,0.06,"square",0.05); }
   function sndCollect(){ [659,784,988,1319].forEach(function(f,i){ tone(f,0.2,"triangle",0.12,i*0.08); }); }
   function sndBuy(){ [784,988,1175].forEach(function(f,i){ tone(f,0.18,"triangle",0.12,i*0.07); }); }
+
+  /* ================= Music (synthesized loop, no files) =================
+     Background music starts the moment ENTER GAME is tapped and
+     loops while the game is on screen. It follows the standing music
+     rule: it pauses when the game leaves the screen (tab hidden,
+     window minimized, Prize Shop open) and comes back only if Sound
+     is on and it was playing before — turning Sound off silences it,
+     and it never restarts on its own after being muted. */
+  var musicStarted = false;    // ENTER GAME has been hit at least once
+  var musicTimer = null, musicStep = 0, musicNextTime = 0;
+  var musicGain = null;
+  var MUSIC_STEP = 60 / 132 / 2;   // eighth notes at 132 BPM
+  // Cheerful arcade loop, MIDI note numbers (0 = rest), 32 eighth-note steps
+  var MUSIC_MELODY = [72,0,76,79, 0,76,0,74, 72,0,74,76, 79,0,0,0,
+                      74,0,76,79, 0,81,0,79, 76,0,74,76, 74,0,72,0];
+  var MUSIC_BASS_ROOTS = [48,43,41,43];   // one chord root per bar: C · G · F · G
+  function midiHz(n){ return 440 * Math.pow(2, (n - 69) / 12); }
+  function musicShouldPlay(){
+    if (!musicStarted || !soundOn) return false;
+    if (document.hidden) return false;
+    var sv = document.getElementById("shopView");
+    if (sv && !sv.hidden) return false;   // Prize Shop open = off the game screen
+    return true;
+  }
+  function musicNote(midi, t, dur, type, vol){
+    var c = actx; if (!c || !musicGain) return;
+    var o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(midiHz(midi), t);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g); g.connect(musicGain);
+    o.start(t); o.stop(t + dur + 0.02);
+  }
+  function scheduleMusicStep(step, t){
+    var m = MUSIC_MELODY[step];
+    if (m) musicNote(m, t, MUSIC_STEP * 1.8, "triangle", 0.14);
+    if (step % 8 === 0) musicNote(MUSIC_BASS_ROOTS[step / 8], t, MUSIC_STEP * 3.4, "sine", 0.16);
+    else if (step % 8 === 4) musicNote(MUSIC_BASS_ROOTS[(step - 4) / 8] + 7, t, MUSIC_STEP * 3.4, "sine", 0.11);
+  }
+  function musicTick(){
+    var c = actx; if (!c) return;
+    // Mute or unmute notes already queued so a pause lands at once.
+    if (musicGain){
+      var target = musicShouldPlay() ? 0.9 : 0.0;
+      musicGain.gain.setTargetAtTime(target, c.currentTime, 0.03);
+    }
+    if (!musicShouldPlay()) return;   // paused: the loop waits here until it can play again
+    if (musicNextTime < c.currentTime) musicNextTime = c.currentTime + 0.06;   // fell behind while paused — restart from now, no burst of catch-up notes
+    while (musicNextTime < c.currentTime + 0.3){
+      scheduleMusicStep(musicStep, musicNextTime);
+      musicNextTime += MUSIC_STEP;
+      musicStep = (musicStep + 1) % MUSIC_MELODY.length;
+    }
+  }
+  function startMusic(){
+    var c = ac(); if (!c) return;
+    if (!musicGain){ musicGain = c.createGain(); musicGain.gain.value = 0; musicGain.connect(c.destination); }
+    if (musicStarted) return;
+    musicStarted = true;
+    musicStep = 0;
+    musicNextTime = c.currentTime + 0.08;
+    if (musicTimer) clearInterval(musicTimer);
+    musicTimer = setInterval(musicTick, 90);
+    musicTick();
+    dbg("Music started (began on ENTER GAME)");
+  }
 
   /* ================= DOM ================= */
   var $ = function(id){ return document.getElementById(id); };
@@ -1267,6 +1334,7 @@
       ["Prizes owned", regularOwnedCount() + " / " + PRIZES.length],
       ["Sports Car", isOwned(SPORTS_CAR.id) ? "OWNED 🏎️" : (regularOwnedCount() >= PRIZES.length ? "UNLOCKED — 40,000 🎟" : "Locked")],
       ["Sound", soundOn ? "On" : "Off"],
+      ["Music", !musicStarted ? "Not started (starts on ENTER GAME)" : (musicShouldPlay() ? "Playing" : "Paused")],
       ["100 cheat", always100 ? "ON — every roll scores 100" : "Off"],
       ["Stage", Math.round(stageEl.getBoundingClientRect().height) + "px tall"],
       ["Screen", window.innerWidth + " × " + window.innerHeight]
@@ -1538,9 +1606,14 @@
     this.textContent = soundOn ? "🔊 Sound: On" : "🔇 Sound: Off";
     dbg("Sound " + (soundOn ? "ON" : "OFF"));
     if (soundOn) ac();
+    musicTick();   // Sound off silences the music at once; Sound on brings it back only if it had started
   });
   document.addEventListener("visibilitychange", function(){
-    // No background music in Super Skee; nothing to resume. SFX only play on tap.
+    // Music rule: background music pauses while the game is off screen
+    // (tab hidden / window minimized) and resumes on return only if
+    // Sound is on and it was playing before — musicTick checks both.
+    musicTick();
+    dbg(document.hidden ? "Game hidden — music paused" : "Game visible — music " + (musicShouldPlay() ? "resumed" : "stays off"));
   });
   /* ---------- Hamburger menu ---------- */
   var menuPanel = $("menuPanel"), menuBtn = $("menuBtn");
@@ -1596,6 +1669,7 @@
     renderShop();
     $("shopView").hidden = false;
     stageEl.style.display = "none";
+    musicTick();   // Prize Shop is off the game screen — music pauses while it is open
     window.scrollTo({top:0});
     // Collection already complete and the car still unpurchased: the
     // screen blinks and flashes to celebrate the unlocked grand prize.
@@ -1605,6 +1679,7 @@
   function closeShop(){
     $("shopView").hidden = true;
     stageEl.style.display = "";
+    musicTick();   // back on the game screen — music resumes if Sound is on
     fitStage();
     if (phase === "aim" && !anim) idleDraw();
     window.scrollTo({top:0, behavior:"smooth"});
@@ -1908,6 +1983,7 @@
     if (phase !== "title") return;
     ac();
     [523,659,784].forEach(function(f,i){ tone(f,0.16,"square",0.09,i*0.07); });
+    startMusic();   // the music begins the moment ENTER GAME is hit
     $("titleView").hidden = true;
     stageEl.hidden = false;
     dbg("Entered game from title screen");
