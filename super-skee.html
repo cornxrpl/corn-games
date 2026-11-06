@@ -49,10 +49,19 @@
      How to Play / Prize Shop buttons are always all on screen. */
   .wrap{max-width:404px; margin:0 auto; padding:0 8px 0;}
   /* One-screen stage: CSS gives it the visible viewport height (dvh
-     tracks mobile browser bars), capped at the same 820px on every
-     device so tall screens never stretch the game taller; JS then
-     pins it to the smallest measured visible height. */
-  .stage{position:relative; display:flex; flex-direction:column; padding-top:4px; height:100vh; height:100dvh; max-height:820px; overflow:hidden;}
+     tracks mobile browser bars), capped at 784px on every device so
+     tall screens never stretch the game taller; JS then pins it to
+     the smallest measured visible height. The cap deliberately sits
+     BELOW a full iPhone screen: when the game runs under a host bar
+     (the Corn Games hub's Back to menu bar, browser chrome), a stage
+     sized to the full viewport starts under that bar and its bottom
+     — the PRIZE SHOP button — lands off screen. The 784px cap plus
+     the tightened chrome around the cabinet leaves that headroom,
+     so title, stats, cabinet, Aim / Power / ROLL and the PRIZE SHOP
+     button are all on the one screen, bottom button included. The
+     cabinet keeps essentially the size Ryan loves: the space comes
+     out of the chrome around it, not out of the lane. */
+  .stage{position:relative; display:flex; flex-direction:column; padding-top:3px; padding-bottom:8px; height:100vh; height:100dvh; max-height:784px; overflow:hidden;}
   .stage>*{flex:0 0 auto;}
   .stage .cabinet{flex:1 1 auto; min-height:0;}
   /* End-of-round squeeze: once the ticket printer is on the stage, the
@@ -79,7 +88,7 @@
   /* ---------- Title ---------- */
   .title{
     font-family:"Titan One",system-ui,sans-serif; text-align:center;
-    font-size:clamp(23px,6.6vw,29px); line-height:1.05; margin:0;
+    font-size:clamp(22px,6.2vw,26px); line-height:1; margin:0;
     color:#ff5db1; letter-spacing:1px;
     -webkit-text-stroke:1px #3d0020;
     text-shadow:0 2px 0 #8f0047, 0 0 8px rgba(255,46,166,.45);
@@ -92,7 +101,7 @@
   /* ---------- Title screen (shown first; Enter Game opens the cabinet) ---------- */
   .title-view{
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;
-    height:100vh; height:100dvh; max-height:820px; overflow:hidden; padding:18px 4px 26px; text-align:center;
+    height:100vh; height:100dvh; max-height:784px; overflow:hidden; padding:18px 4px 26px; text-align:center;
   }
   .title-big{
     font-family:"Titan One",system-ui,sans-serif; font-size:clamp(44px,13vw,58px); line-height:1.05; margin:0;
@@ -141,8 +150,8 @@
   .title-meta{margin:0; font-weight:800; font-size:14px; color:var(--muted);}
   .title-meta span{color:var(--yellow); font-family:"Titan One",sans-serif;}
   /* ---------- Level bar (current level + 1000x bonus flag) ---------- */
-  .level-bar{display:flex; justify-content:center; align-items:center; gap:6px; flex-wrap:wrap; margin:1px 0 5px;}
-  .level-pill{background:var(--panel); border:2px solid var(--purple); border-radius:999px; padding:2px 12px; font-family:"Titan One",sans-serif; font-size:13px; color:#fff; box-shadow:0 0 12px rgba(176,38,255,.5); letter-spacing:.04em;}
+  .level-bar{display:flex; justify-content:center; align-items:center; gap:6px; flex-wrap:wrap; margin:0 0 4px;}
+  .level-pill{background:var(--panel); border:2px solid var(--purple); border-radius:999px; padding:1px 12px; font-family:"Titan One",sans-serif; font-size:12.5px; color:#fff; box-shadow:0 0 12px rgba(176,38,255,.5); letter-spacing:.04em;}
   .bonus-pill{background:var(--yellow); border:2px solid var(--yellow-soft); border-radius:999px; padding:2px 10px; font-family:"Titan One",sans-serif; font-size:12px; color:#241a00; box-shadow:0 0 14px rgba(255,230,0,.65);}
   .title-rings .r50{cursor:pointer; user-select:none; -webkit-user-select:none; touch-action:manipulation;}
   .title-rings .r50:active{transform:translate(-50%,-50%) scale(.94);}
@@ -159,17 +168,17 @@
   .cancel-btn:active{transform:translateY(3px); box-shadow:0 3px 0 var(--red-dark);}
   .crown-spot{text-align:center; font-size:30px; height:0; overflow:visible; position:relative; top:-6px;}
   /* ---------- Top stats ---------- */
-  .stats{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:5px;}
-  .stat{background:var(--panel); border:2px solid var(--cyan); border-radius:12px; padding:2px 4px 1px; text-align:center; box-shadow:var(--shadow), var(--glow-cyan);}
+  .stats{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:4px;}
+  .stat{background:var(--panel); border:2px solid var(--cyan); border-radius:12px; padding:1px 4px 0; text-align:center; box-shadow:var(--shadow), var(--glow-cyan);}
   .stat:nth-child(2){border-color:var(--pink); box-shadow:var(--shadow), var(--glow-pink);}
   .stat:nth-child(3){border-color:var(--lime); box-shadow:var(--shadow), var(--glow-lime);}
   .stat:nth-child(4){border-color:var(--yellow); box-shadow:var(--shadow), 0 0 14px rgba(255,230,0,.45);}
   .stat .lab{font-size:9.5px; font-weight:900; letter-spacing:.08em; color:var(--muted); text-transform:uppercase;}
-  .stat .val{font-family:"Titan One",sans-serif; font-size:17px; line-height:1.1; color:#fff; text-shadow:0 0 10px rgba(255,255,255,.35);}
+  .stat .val{font-family:"Titan One",sans-serif; font-size:16px; line-height:1.05; color:#fff; text-shadow:0 0 10px rgba(255,255,255,.35);}
   .stat.tickets .val{color:var(--yellow); text-shadow:0 0 12px rgba(255,230,0,.75);}
   /* ---------- Cabinet / lane ---------- */
   .cabinet{
-    background:#2a0a4a; border:2px solid var(--purple); border-radius:20px; padding:6px;
+    background:#2a0a4a; border:2px solid var(--purple); border-radius:20px; padding:5px;
     box-shadow:0 10px 0 rgba(0,0,0,.55), 0 0 22px rgba(176,38,255,.55), inset 0 0 0 4px #0d0221, inset 0 0 24px rgba(176,38,255,.25);
     display:flex; flex-direction:column; justify-content:center; align-items:center;
     overflow:hidden;
@@ -179,7 +188,7 @@
     background:#0a1030; touch-action:none; cursor:crosshair;
     box-shadow:0 0 0 2px rgba(0,229,255,.35), 0 0 18px rgba(0,229,255,.22);
   }
-  .ball-pips{display:flex; gap:6px; justify-content:center; padding:5px 2px 0; flex-wrap:wrap; width:100%;}
+  .ball-pips{display:flex; gap:6px; justify-content:center; padding:4px 2px 0; flex-wrap:wrap; width:100%;}
   .pip{
     min-width:30px; height:22px; padding:0 5px; border-radius:999px;
     background:#1c0b38; color:#e6e1ff; display:flex; align-items:center; justify-content:center;
@@ -188,8 +197,8 @@
   .pip.done{background:var(--yellow); color:#241a00; border-color:var(--yellow-soft); box-shadow:0 0 12px rgba(255,230,0,.65);}
   .pip.now{outline:3px solid var(--cyan); outline-offset:1px; box-shadow:var(--glow-cyan);}
   /* ---------- Controls ---------- */
-  .controls{background:var(--panel); border:2px solid var(--pink); border-radius:16px; padding:7px 10px; margin-top:6px; box-shadow:var(--shadow), var(--glow-pink);}
-  .ctl-row{margin-bottom:4px;}
+  .controls{background:var(--panel); border:2px solid var(--pink); border-radius:16px; padding:6px 10px; margin-top:5px; box-shadow:var(--shadow), var(--glow-pink);}
+  .ctl-row{margin-bottom:3px;}
   .ctl-head{display:flex; justify-content:space-between; align-items:center; gap:7px; margin-bottom:1px;}
   .ctl-head label{font-weight:900; font-size:13px; letter-spacing:.04em; text-transform:uppercase; flex:1; color:#fff;}
   #aimRow .ctl-head label{color:var(--cyan); text-shadow:0 0 10px rgba(0,229,255,.6);}
@@ -216,16 +225,16 @@
   .lock-btn:disabled{cursor:default;}
   .lock-btn:disabled:not(.locked){background:#3d3d5c; color:#c9cbe8; box-shadow:0 3px 0 #23233c;}
   input[type=range].locked{accent-color:var(--lime); cursor:default;}
-  input[type=range]{width:100%; height:21px; accent-color:var(--pink); cursor:pointer; margin:0;}
+  input[type=range]{width:100%; height:18px; accent-color:var(--pink); cursor:pointer; margin:0;}
   #aimRange{accent-color:var(--cyan);}
   #powerRange{accent-color:var(--orange);}
   /* While the meters are sweeping on their own (football-game style),
      the thumbs are driven by the animation — fingers can't fight them. */
   input[type=range].moving{pointer-events:none; cursor:default;}
-  .ticks{display:flex; justify-content:space-between; font-size:10.5px; font-weight:800; color:var(--muted); margin-top:-3px; line-height:1.25;}
+  .ticks{display:flex; justify-content:space-between; font-size:10.5px; font-weight:800; color:var(--muted); margin-top:-2px; line-height:1.15;}
   .roll-btn{
-    width:100%; border:none; cursor:pointer; border-radius:14px; padding:8px;
-    font-family:"Titan One",sans-serif; font-size:19px; letter-spacing:.06em;
+    width:100%; border:none; cursor:pointer; border-radius:14px; padding:7px;
+    font-family:"Titan One",sans-serif; font-size:18px; letter-spacing:.06em;
     background:var(--lime); color:#142600; box-shadow:0 6px 0 var(--lime-dark), var(--glow-lime);
     transition:transform .06s, box-shadow .06s;
   }
@@ -311,9 +320,9 @@
   .menu-item:active{transform:translateY(1px);}
   .menu-item.close{border-color:var(--red); text-align:center;}
   /* ---------- Big Shop button (bottom of the game screen) ---------- */
-  .toolbar{display:flex; margin-top:6px;}
+  .toolbar{display:flex; margin-top:5px;}
   .shop-open-btn{
-    flex:1; border:2px solid var(--yellow); cursor:pointer; border-radius:13px; padding:8px 8px;
+    flex:1; border:2px solid var(--yellow); cursor:pointer; border-radius:13px; padding:7px 8px;
     font-family:"Titan One",sans-serif; font-size:17px; letter-spacing:.05em;
     background:var(--pink); color:#fff; box-shadow:0 6px 0 var(--pink-dark), var(--glow-pink);
   }
@@ -369,7 +378,7 @@
     white-space:pre-wrap; word-break:break-word; max-height:38dvh; overflow:auto;
   }
   /* ---------- Toolbar ---------- */
-  .toolbar{display:flex; gap:8px; margin-top:6px;}
+  .toolbar{display:flex; gap:8px; margin-top:5px;}
   .tool-btn{
     flex:1; border:2px solid var(--cyan); background:var(--panel2); color:#fff;
     border-radius:12px; padding:8px 6px; font-family:inherit; font-weight:900; font-size:13.5px; cursor:pointer;
@@ -1139,15 +1148,17 @@
      and browser bars can only shrink the truly visible area, so the
      smallest number is the safe one — no signal can make the stage
      taller than what the player can actually see. The result is then
-     capped at 820px, the height of the game in Ryan's iPhone
-     screenshot, so iPad, Android, and PC show the exact same size
-     instead of stretching taller. The canvas scales into whatever
+     capped at 784px — just under a full iPhone screen — so when the
+     game sits below a host bar (the hub's Back to menu bar) the
+     bottom PRIZE SHOP button still lands on screen instead of
+     slipping below the fold, and iPad, Android, and PC show the
+     exact same size instead of stretching taller. The canvas scales into whatever
      height the cabinet has left, aspect ratio kept. Re-runs on
      resize, rotation, browser-bar show/hide, and after load, so the
      Aim / Power / ROLL and Sound / How to Play / Prize Shop buttons
      stay on screen everywhere. */
   var stageEl = $("stage");
-  var STAGE_MAX_H = 820;
+  var STAGE_MAX_H = 784;
   function visibleHeight(){
     var hs = [];
     if (window.innerHeight) hs.push(window.innerHeight);
