@@ -98,7 +98,6 @@
   .pill.mint{background:#332a00;color:var(--gold);border:1px solid var(--gold)}
   .breakdown{font-size:14px;line-height:1.6}
   .breakdown div{display:flex;justify-content:space-between;border-bottom:1px dashed var(--line);padding:4px 0}
-  #debugLog{display:none;background:#050805;color:#8aff8a;border:1px solid var(--line);border-radius:12px;padding:10px;font-size:12px;white-space:pre-wrap;max-height:180px;overflow:auto;margin-top:10px}
   a{color:var(--green)} @media (prefers-color-scheme: light){ a{color:#007a00} }
   .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
   /* ---------- Screen flow: Title -> Home -> Game ---------- */
@@ -154,6 +153,27 @@
   .homeCollage img{width:100%;height:100%;object-fit:cover;display:block;position:absolute;inset:0}
   .homeCollage figcaption{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.78);color:#fff;font-size:9px;font-weight:700;padding:3px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
   .homeCollage figure.goldTile{border:2px solid var(--gold);box-shadow:0 0 14px rgba(255,214,10,.35)}
+  /* ---------- Info sheet: hamburger-only on ALL screens (iPad / Android / PC + iPhone) ----------
+     The Move tip, What's falling?, How to Play, haul tally and attribution
+     live ONLY inside #infoSheet, opened from the hamburger menu. Nothing of it
+     shows below the controls on any game screen, at any width. */
+  .wrap > .hint{display:none !important}
+  #infoSheet{
+    position:fixed;inset:0;z-index:90;background:var(--bg);
+    overflow-y:auto;-webkit-overflow-scrolling:touch;
+    padding:12px 12px calc(16px + env(safe-area-inset-bottom,0px));
+    display:none;grid-template-columns:1fr;gap:12px;margin:0;
+  }
+  body.info-open #infoSheet{display:block}
+  body.info-open #infoSheet .panel{margin-bottom:12px;max-width:1060px;margin-left:auto;margin-right:auto}
+  body.info-open{overflow:hidden}
+  #closeInfoBtn{
+    display:block !important;width:100%;max-width:1060px;margin:0 auto 12px;min-height:44px;
+    border-radius:12px;border:1px solid var(--line);background:var(--panel);
+    color:var(--ink);font-weight:800;cursor:pointer;position:sticky;top:0;z-index:2;
+  }
+  #attribSheet{display:block !important;max-width:1060px;margin:0 auto;font-size:12.5px;color:var(--muted);line-height:1.5;padding:2px}
+  .moveTipText{color:var(--muted);line-height:1.55;font-size:14.5px;margin:4px 0 0}
   /* xrp.cafe logo mark (DOM replica of the canvas catcher) */
   .cafeMark{display:inline-grid;place-items:center;line-height:0}
   @media (max-width:560px){
@@ -290,7 +310,6 @@
       <h3>Menu</h3>
       <button id="menuHow">📖 &nbsp;How to Play</button>
       <button id="menuSound">🔊 &nbsp;Sound: <span id="soundState">On</span></button>
-      <button id="menuDebug">🛠 &nbsp;Debug Log</button>
       <button id="menuResetBest">↺ &nbsp;Reset Best Score</button>
     </div>
 
@@ -345,10 +364,13 @@
     <button id="restartBtn">↺ Restart</button>
     <button id="soundBtn">🔊 Sound On</button>
   </div>
-  <p class="hint">Move: drag / move mouse on the field, or use ← → / A D. On phones, slide your finger — the blue xrp.cafe catcher follows. Tip: stay under the gold NEW MINT when it flashes at the top.</p>
 
   <div class="grid" id="infoSheet">
     <button id="closeInfoBtn" type="button">✕ &nbsp;Back to Game</button>
+    <section class="panel" id="movePanel">
+      <h2>Move</h2>
+      <p class="moveTipText">Move: drag / move mouse on the field, or use ← → / A D. On phones, slide your finger — the blue xrp.cafe catcher follows. Tip: stay under the gold NEW MINT when it flashes at the top.</p>
+    </section>
     <section class="panel" id="collectionsPanel">
       <h2>What’s falling?</h2>
       <p>Every tile that falls is a <b style="color:var(--ink)">real NFT</b> — the actual artwork and name of an actual token — randomised on every drop from the <b style="color:var(--ink)">top 30 collections by 24h volume</b> on <a href="https://xrpl.to/nfts/view/xrpcafe" target="_blank" rel="noopener">xrp.cafe via XRPL.to</a>, checked Fri Nov 13, 2026. Three real NFTs per collection are in the mix, and <b style="color:var(--ink)">Animal Fam is weighted 4-in-31</b> — it falls about 13% of the time, roughly 4× any other single collection; the other 29 collections share the remaining 27-in-31 evenly. Floors are that day’s snapshot for scoring flavour, not live prices.</p>
@@ -370,12 +392,9 @@
       </ul>
       <h3>Your haul this run</h3>
       <div class="breakdown" id="breakdown"><p style="margin:0">Nothing caught yet — start a run and your per-collection tally will show here.</p></div>
-      <div id="debugLog" aria-label="Debug log"></div>
     </section>
     <p id="attribSheet">Collections, floors &amp; NFT artwork: xrp.cafe rankings and NFT data by <a href="https://xrpl.to" target="_blank" rel="noopener">xrpl.to</a> (Nov 13, 2026 snapshot). Artwork belongs to its creators/collections. This is a fan game — not affiliated with xrp.cafe. No wallet connection, nothing to buy.</p>
   </div>
-
-  <p class="hint" style="margin-top:12px">Collections, floors &amp; NFT artwork: xrp.cafe rankings and NFT data by <a href="https://xrpl.to" target="_blank" rel="noopener">xrpl.to</a> (Nov 13, 2026 snapshot). Artwork belongs to its creators/collections. This is a fan game — not affiliated with xrp.cafe. No wallet connection, nothing to buy.</p>
 </div>
 
 <script src="./shared/hub.js"></script>
@@ -438,7 +457,7 @@
       progBar=document.getElementById('progBar'), progLabel=document.getElementById('progLabel'),
       overlay=document.getElementById('overlay'), overlayText=document.getElementById('overlayText'),
       finalStats=document.getElementById('finalStats'), banner=document.getElementById('banner'),
-      breakdownEl=document.getElementById('breakdown'), debugEl=document.getElementById('debugLog'),
+      breakdownEl=document.getElementById('breakdown'),
       mintBadge=document.getElementById('mintBadge'),
       levelFlash=document.getElementById('levelFlash'), levelFlashTitle=document.getElementById('levelFlashTitle'),
       levelFlashSub=document.getElementById('levelFlashSub');
@@ -452,14 +471,6 @@
     d.innerHTML='<div class="collIcon"><img src="'+c.nfts[0].img+'" alt="Actual NFT artwork: '+esc(c.nfts[0].name)+' from '+esc(c.name)+'" loading="lazy"></div><div><b>'+esc(c.name)+' '+(c.weight>1?'<span class="pill double">4 IN 31 DROPS</span>':'')+'</b><span>'+floorTxt+' • '+c.points+' pts<br>e.g. '+esc(c.nfts[0].name)+'</span></div>';
     grid.appendChild(d);
   });
-
-  // ---------- Debug ----------
-  var debugOn=false;
-  function log(msg){
-    var line='['+new Date().toLocaleTimeString()+'] '+msg;
-    debugEl.textContent += line+'\n'; debugEl.scrollTop=debugEl.scrollHeight;
-    if(window.console) console.log('[NFT Catch]', msg);
-  }
 
   // ---------- Audio (synth, no files) ----------
   var audioCtx=null, soundOn=true, musicTimer=null, musicStep=0;
@@ -546,7 +557,7 @@
     var baseFall = (95 + Math.random()*45) * speedMult(); // px per second
     if(isMint) baseFall *= 1.15;
     items.push({ c:c, nft:nft, points: isMint ? 100 : c.points, x:x, y:-size-4, size:size, vy:baseFall, sway:Math.random()*Math.PI*2, swaySpeed:0.8+Math.random()*1.4, rot:(Math.random()-0.5)*0.18, isMint:isMint });
-    if(isMint){ mintBadge.style.display='none'; mintWarned=false; log('NEW MINT spawned: '+nft.name+' ('+c.name+')'); showBanner('✦ NEW MINT! 100 pts ✦', true); sMint(); }
+    if(isMint){ mintBadge.style.display='none'; mintWarned=false; showBanner('✦ NEW MINT! 100 pts ✦', true); sMint(); }
   }
 
   function spawnHeart(){
@@ -554,7 +565,6 @@
     var x=size/2+10+Math.random()*(W-size-20);
     var baseFall=(88+Math.random()*32)*speedMult(); // a touch slower than NFTs so it can be chased
     items.push({ isHeart:true, c:null, nft:null, points:0, x:x, y:-size-10, size:size, vy:baseFall, sway:Math.random()*Math.PI*2, swaySpeed:0.9+Math.random()*1.1, rot:0 });
-    log('Energy heart spawned — catch it for +1 heart (lives '+lives+'/'+MAX_LIVES+')');
     showBanner('❤️ ENERGY HEART — +1 HEART ❤️', 'heart');
     sHeart();
   }
@@ -588,7 +598,6 @@
     document.body.classList.add('screen-home');
     document.body.classList.remove('screen-game');
     resize(); setTimeout(resize, 60);
-    log('Entered Home Screen');
   }
   function startGame(){
     document.body.classList.remove('screen-title','screen-home');
@@ -598,8 +607,7 @@
     spawnTimer=0.3; mintTimer=14+Math.random()*10; mintWarned=false; heartTimer=9+Math.random()*6; gameOver=false; paused=false; levelUpPause=false; levelFlash.classList.remove('show'); playing=true;
     overlay.classList.add('hidden'); finalStats.style.display='none';
     document.getElementById('playPauseBtn').textContent='⏸ Pause';
-    ac(); startMusic(); updateHUD(); log('Game started');
-  }
+    ac(); startMusic(); updateHUD();   }
   function endGame(){
     playing=false; gameOver=true; levelUpPause=false; levelFlash.classList.remove('show'); stopMusic();
     if(score>best){ best=score; try{ localStorage.setItem('nftCatch.best', String(best)); }catch(e){} bestEl.textContent=best; } if(window.Hub) Hub.submitScore('nft-catch-game', score);
@@ -609,7 +617,6 @@
     document.getElementById('startBtn').textContent='↺ PLAY AGAIN';
     overlay.classList.remove('hidden');
     document.getElementById('playPauseBtn').textContent='▶ Start / Pause';
-    log('Game over — score '+score+', caught '+caught+', level '+level);
   }
 
   function triggerLevelUp(newLevel){
@@ -622,15 +629,12 @@
     levelFlash.classList.add('show');
     levelUpPause=true;
     updateHUD();
-    log('Level up → '+level+' (caught '+caught+'), speed ×'+speedMult().toFixed(2)+' — HEARTS REFILLED: '+heartsBefore+' → '+lives+'/'+MAX_LIVES+' (full ❤️❤️❤️)');
-    log('LEVEL UP celebration shown — full-screen '+(reducedMotion ? 'flash DISABLED (prefers-reduced-motion), static message shown' : 'blink & flash running')+', game paused until player taps to continue');
   }
   function dismissLevelUp(){
     if(!levelUpPause) return;
     levelUpPause=false;
     levelFlash.classList.remove('show');
     ac();
-    log('Level Up celebration dismissed by tap — continuing at Level '+level+', hearts '+lives+'/'+MAX_LIVES+', speed ×'+speedMult().toFixed(2));
   }
   function onCatch(it){
     caught++; score += it.points; tally[it.isMint?'newmint':it.c.id]=(tally[it.isMint?'newmint':it.c.id]||0)+1; player.bounce=1;
@@ -638,7 +642,6 @@
     floaters.push({x:it.x, y:H-14-player.h-12, text:'+'+it.points+(it.isMint?' MINT!':''), t:0, color: it.isMint?'#ffd60a':'#00ff00'});
     floaters.push({x:it.x, y:H-14-player.h-30, text:it.nft.name, t:0, color:'#ffffff', small:true});
     if(it.isMint) sMint(); else sCatch(it.points);
-    log('Caught '+it.nft.name+' ('+it.c.name+') +'+it.points);
     var newLevel = Math.floor(caught/10)+1;
     if(newLevel>level){
       updateHUD();
@@ -655,23 +658,19 @@
       floaters.push({x:it.x, y:H-14-player.h-12, text:'+1 ❤️ HEART!', t:0, color:'#ff8a9a'});
       floaters.push({x:it.x, y:H-14-player.h-30, text:'Energy '+lives+' / '+MAX_LIVES, t:0, color:'#ffffff', small:true});
       sHeart();
-      log('Energy heart caught — +1 heart gained, lives now '+lives+'/'+MAX_LIVES);
     } else {
       floaters.push({x:it.x, y:H-14-player.h-12, text:'ALREADY FULL', t:0, color:'#ffd60a'});
       floaters.push({x:it.x, y:H-14-player.h-30, text:'Hearts already '+MAX_LIVES+' / '+MAX_LIVES, t:0, color:'#ffffff', small:true});
       sHeartFull();
-      log('Energy heart caught — ALREADY FULL, no extra heart (lives already '+lives+'/'+MAX_LIVES+')');
     }
     updateHUD();
   }
   function onHeartMiss(it){
     floaters.push({x:it.x, y:H-30, text:'Energy heart missed', t:0, color:'#ff8a9a'});
-    log('Energy heart missed — no penalty, lives stay '+lives+'/'+MAX_LIVES);
   }
   function onMiss(it){
     lives--; sMiss();
     floaters.push({x:it.x, y:H-30, text: it.isMint ? 'Mint missed!' : 'Missed '+it.nft.name, t:0, color:'#ff6b81'});
-    log('Missed '+it.c.name+' — lives '+lives);
     updateHUD();
     if(lives<=0) endGame();
   }
@@ -860,15 +859,13 @@
     if(!playing && !gameOver){ startGame(); return; }
     if(gameOver){ startGame(); return; }
     paused=!paused; document.getElementById('playPauseBtn').textContent = paused ? '▶ Resume' : '⏸ Pause';
-    log(paused?'Paused':'Resumed');
   }
   document.getElementById('enterGameBtn').addEventListener('click', function(){ try{ ac(); }catch(e){} goHome(); });
   document.getElementById('startBtn').addEventListener('click', startGame);
   document.getElementById('playPauseBtn').addEventListener('click', togglePlayPause);
   document.getElementById('restartBtn').addEventListener('click', startGame);
   function openInfo(){
-    if(window.innerWidth<=760){ document.body.classList.add('info-open'); var sh=document.getElementById('infoSheet'); if(sh) sh.scrollTop=0; }
-    else document.getElementById('howPanel').scrollIntoView({behavior:'smooth',block:'start'});
+    document.body.classList.add('info-open'); var sh=document.getElementById('infoSheet'); if(sh) sh.scrollTop=0;
   }
   function closeInfo(){ document.body.classList.remove('info-open'); resize(); }
   document.getElementById('howBtn').addEventListener('click', openInfo);
@@ -885,13 +882,11 @@
   document.addEventListener('click', function(e){ if(!menu.contains(e.target) && e.target!==menuBtn) menu.classList.remove('open'); });
   document.getElementById('menuHow').addEventListener('click', function(){ menu.classList.remove('open'); openInfo(); });
   document.getElementById('menuSound').addEventListener('click', function(){ setSound(!soundOn); });
-  document.getElementById('menuDebug').addEventListener('click', function(){ debugOn=!debugOn; debugEl.style.display=debugOn?'block':'none'; if(debugOn) log('Debug log on — drop weights: Animal Fam 4 of 31 total (~12.9%), the other 29 collections share 27 of 31.'); menu.classList.remove('open'); openInfo(); });
-  document.getElementById('menuResetBest').addEventListener('click', function(){ best=0; try{localStorage.removeItem('nftCatch.best');}catch(e){} bestEl.textContent='0'; menu.classList.remove('open'); log('Best score reset'); });
+  document.getElementById('menuResetBest').addEventListener('click', function(){ best=0; try{localStorage.removeItem('nftCatch.best');}catch(e){} bestEl.textContent='0'; menu.classList.remove('open'); });
 
   // ---------- Boot ----------
   resize(); setTimeout(resize, 60);
   updateHUD();
-  log('Loaded. '+COLLECTIONS.length+' collections (top 30 by 24h vol), 3 real NFTs each = 90 actual NFTs. Animal Fam = 4 of every 31 drops. Catcher: xrp.cafe logo. First NEW MINT in ~14–24s, then every 20–32s. Energy hearts: first in ~9–15s, then every ~14–22s — catch for +1 heart (max 3, ALREADY FULL at 3). Missed NFT = −1 heart, 0 hearts = game over. LEVEL UP (every 10 caught): hearts REFILLED to full 3 + full-screen blink/flash celebration until tap to continue'+(reducedMotion ? ' — flashing disabled here (prefers-reduced-motion)' : '')+'.');
   requestAnimationFrame(function(ts){ lastTime=ts; requestAnimationFrame(loop); });
   // Corn Games hub deployment only (Vercel copy): yellow Back to Menu bar.
   // shared/hub.js is loaded by an external script tag ahead of this script;
